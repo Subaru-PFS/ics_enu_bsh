@@ -1,20 +1,11 @@
 
-#include <Stepper.h>
 
-#include <Dhcp.h>
-#include <Dns.h>
-#include <Ethernet.h>
-#include <EthernetClient.h>
-#include <EthernetServer.h>
-#include <EthernetUdp.h>
-#include <util.h>
-
-// LED diming board
-// by Enos 2013/11/20
 
 #include <SPI.h>
-#include <Ethernet.h>
-#include "TimerOne.h"
+#include <Ethernet2.h>
+
+#include <MsTimer2.h>
+//#include <TimerOne.h>
 
 // Enter a MAC address and IP address for your controller below.
 // The IP address will be dependent on your local network.
@@ -28,7 +19,7 @@ byte mac[] =
 
 // telnet defaults to port 23
 EthernetServer g_server(23);
-EthernetClient g_client;
+
 
 // BIA Controller MODES
 int bia_mode;
@@ -47,7 +38,8 @@ boolean shr_open_status;
 boolean shr_close_status;
 boolean shr_err_status;
 
-
+bool LedState;
+bool PulseMode;
 
 char statword [] ={"00000000"};
 
@@ -56,19 +48,20 @@ void setup()
 {    
   Serial.begin(9600);
   // this check is only needed on the Leonardo:
-   while (!Serial) {
-    ; // wait for serial port to connect. Needed for Leonardo only
-  }
-  Serial.println("Search your Feelings");
+  Serial.println("BIADuino v2.0");
   
   if (Ethernet.begin(mac) == 0) {
     Serial.println("Failed to configure Ethernet using DHCP");
     // no point in carrying on, so do nothing forevermore:
     for(;;);}
-  Serial.println(Ethernet.localIP());
+
   g_server.begin();
+
+  Serial.println(Ethernet.localIP());
   delay(1000);
  
+  LedState = false;
+  PulseMode = false;
 
    // Set BIA :ode to IDLE
   bia_mode = 0;
@@ -78,10 +71,7 @@ void setup()
   g_aduty = 0; // 0% duty 
   g_aperiod = 100; // 100000 = 100ms 1000 = 1ms
   g_pin = 9;
-   
-  Timer1.initialize(300000); // the timer's period here (in microseconds)
-  Timer1.pwm(9, 0); // setup pwm on pin 9, 0% duty cycle
-  Timer1.setPwmDuty(9,0);
+  
   
   //////////////////////////////////// PARAM SHUTTERS /////////////////////////////////////////
     // Config pin 7 en output (DF)
@@ -94,11 +84,50 @@ void setup()
   pinMode(7,OUTPUT);
   pinMode(8,INPUT);
 
+  pinMode(g_pin, OUTPUT);
+  digitalWrite(g_pin, LOW);
+  digitalWrite(6, LOW);
+  digitalWrite(g_pin, LOW);
   
-  g_client.read();
-  g_client.flush();
-   
+  MsTimer2::set(1000, Timer); // 500ms period
+  MsTimer2::start();
+}
 
+//ISR(TIMER1_COMPA_vect)
+void Timer()
+{//timer1 interrupt 1Hz
+  if (bia_mode == 2)
+  {
+    if (!PulseMode)
+    {
+      analogWrite(g_pin, g_aduty);
+      return;
+    }
+    
+    if (LedState)
+    {
+      Serial.print("ON ");
+      Serial.println(g_aduty);
+     analogWrite(g_pin, g_aduty);
+     //digitalWrite(9, HIGH);
+    }
+    else
+    {
+      Serial.println("OFF");
+      digitalWrite(g_pin, LOW);
+    }    
+    LedState = !LedState;
+  }
+}
+
+
+void SetPeriod(int d)
+{
+  //OCR1A = d;
+  
+  MsTimer2::stop();  
+  MsTimer2::set(d, Timer);
+  MsTimer2::start();
 }
 
 void Command(EthernetClient g_client, String mycommand){
@@ -210,19 +239,47 @@ void Command(EthernetClient g_client, String mycommand){
     g_client.print(bia_mode);
     cmdnok = 1;}
 
-
+  long v;
 ///////////////////////////////////// PROGRAMMATION DU TEMPS DE CYCLE TIMER PWM BIA /////////////////////////////////////////
-  if (mycommand.substring(0,10)=="set_period"){
+  if (mycommand.substring(0,10)=="set_period")
+  {
     int mylen=mycommand.length()-2;
     String inter=mycommand.substring(10,mylen);
-    g_aperiod = (long)inter.toInt();
+    v = (long)inter.toInt();
+    
+    if ((v > 0)&&(v<65536))
+    {//v is in ms
+      SetPeriod(v);
+    }
+    
     Serial.println(g_aperiod);
-    cmdnok = 0;} 
+    cmdnok = 0;
+  } 
+  
+  if (mycommand.substring(0,8)=="pulse_on")
+  {
+    PulseMode = true;
+    cmdnok = 0;    
+  }
+  
+  if (mycommand.substring(0,9)=="pulse_off")
+  {
+    PulseMode = false;
+    cmdnok = 0;    
+  }
+  
+  
     
   if (mycommand.substring(0,8)=="set_duty"){
     int mylen=mycommand.length()-2;
     String inter=mycommand.substring(8,mylen);
-    g_aduty=inter.toInt();
+    v =inter.toInt();
+    
+    if ((v>0) && (v<256))
+    {
+      g_aduty = v;
+    }
+    
     Serial.println(g_aduty);
     cmdnok = 0;} 
 
@@ -263,21 +320,25 @@ void Command(EthernetClient g_client, String mycommand){
 ///////////////////////////////////// ACTIONS FAITES SELON MODE ACTUEL BIA /////////////////////////////////////////////////////
   switch (bia_mode) {
     case 0:  ///////////////////////////////////ACTIONS FAITES PENDANT LE MODE 0 CAD IDLE: NI SHUTTER NI BIA//
-      Timer1.setPwmDuty(g_pin, 0); // FORCAGE PWM BIA A ZERO 
+      //Timer1.setPwmDuty(g_pin, 0); // FORCAGE PWM BIA A ZERO 
+      digitalWrite(g_pin, LOW);
+      
       digitalWrite(7,LOW);          // FORCAGE FERMETURE SHUTTER B
       digitalWrite(6,LOW);          // FORCAGE FERMETURE SHUTTER R
       break;
 
 /////////////////////////////////////////////////////////////////// ACTIONS DU MODE 1 SHUTTER//
     case 1:
-      Timer1.setPwmDuty(g_pin, 0);  // FORCAGE BIA ETEINTE
+      //Timer1.setPwmDuty(g_pin, 0);  // FORCAGE BIA ETEINTE
+      digitalWrite(g_pin, LOW);
+      
        digitalWrite(7,HIGH);          // OUVERTURE SHUTTER B
        digitalWrite(6,HIGH);          // OUVERTURE SHUTTER R
       break;
     // //////////////////////////////////////////////////////////////////ACTIONS DU MODE BIA//
     case 2:
-      Timer1.setPeriod(g_aperiod);        // DEMARRE LE TIMER PWM A LA PERIODE PROGRAMM
-      Timer1.setPwmDuty(g_pin, g_aduty); // DEMARRE LE TIMER PWM AU TEMPS DE CYCLE PROGRAMME
+      //Timer1.setPeriod(g_aperiod);        // DEMARRE LE TIMER PWM A LA PERIODE PROGRAMM
+      //Timer1.setPwmDuty(g_pin, g_aduty); // DEMARRE LE TIMER PWM AU TEMPS DE CYCLE PROGRAMME
       digitalWrite(7,LOW);               // FORCE FERMETURE SHUTTER B
       digitalWrite(6,LOW);               // FORCE FERMETURE SHUTTER R
       break;
@@ -297,12 +358,19 @@ int check_interlock(String mycommand){
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void loop() {
+//  Serial.println("Waiting...");
   EthernetClient g_client = g_server.available();
-  if (g_client){
+  if (g_client)
+  {
     int taille=g_client.available();
+
+    if (taille > 100)
+      taille = 100;
+      
     char data[taille+1];
     int i=0;
-    while (g_client.available()>0)
+           
+    while (i<taille)
     {
       char c = g_client.read();
       if (c !=  - 1)
@@ -313,8 +381,8 @@ void loop() {
     }
     data[i]='\0';
     String mystring=(String)data;
-    Command(g_client, mystring);
-      
+    Command(g_client, mystring);      
   }
- 
+  
+ delay(10);
 }
