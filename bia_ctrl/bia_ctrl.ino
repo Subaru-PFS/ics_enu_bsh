@@ -49,7 +49,7 @@ void setup()
 {    
   Serial.begin(9600);
   // this check is only needed on the Leonardo:
-  Serial.println("BIADuino v2.0");
+  Serial.println("BIADuino v2.1");
   
   if (Ethernet.begin(mac) == 0) {
     Serial.println("Failed to configure Ethernet using DHCP");
@@ -191,6 +191,18 @@ void Command(EthernetClient g_client, String mycommand){
       if (mycommand.substring(0,10)=="shut_close"){
         bia_mode = 0;
         cmdnok = 0;}
+        
+      if (mycommand.substring(0,10)=="reboot")
+      {
+        software_reset();
+      }
+      
+      if (mycommand.substring(0,10)=="debug")
+      {
+        bia_mode = 3;
+        cmdnok = 0;
+        g_client.write("*WARNING : Entering Debug mode. Interlock is now DISABLED*"); 
+      }     
       break; 
  
     case 1:
@@ -208,8 +220,7 @@ void Command(EthernetClient g_client, String mycommand){
 
       if (mycommand.substring(0,7)=="bia_off"){
         g_client.write("intlk"); 
-        cmdnok  = 1;}
-        
+        cmdnok  = 1;}        
       break;
 
     case 2:
@@ -229,6 +240,50 @@ void Command(EthernetClient g_client, String mycommand){
         cmdnok = 1;}
         
       break;
+      
+      case 3:
+      //Debug mode : we can operate stuff individually
+      //Warning, this is potentially dangerous, use with caution.
+      if (mycommand.substring(0,7)=="exit"){
+        g_client.write("*DEBUG: Exiting Debug mode.*");
+        bia_mode= 0;
+        cmdnok = 0;}//Debug mode exit.
+        
+      if (mycommand.substring(0,7)=="red_open"){
+        digitalWrite(6,HIGH);          // OUVERTURE SHUTTER R
+        g_client.write("*DEBUG: RED SHUTTER OPEN*");
+        cmdnok = 0;}
+        
+        
+      if (mycommand.substring(0,7)=="blue_open"){
+        digitalWrite(7,HIGH);          // OUVERTURE SHUTTER B
+        g_client.write("*DEBUG: BLUE SHUTTER OPEN*");
+        cmdnok = 0;}
+      
+      if (mycommand.substring(0,7)=="red_close"){
+        g_client.write("*DEBUG: RED SHUTTER CLOSED*");
+        digitalWrite(6,LOW);          // FERMETURE R
+        cmdnok = 0;}
+        
+        
+      if (mycommand.substring(0,7)=="blue_close"){
+        g_client.write("*DEBUG: BLUE SHUTTER CLOSED*");
+        digitalWrite(7,LOW);          // FERMETURE B
+        cmdnok = 0;}     
+        
+      if (mycommand.substring(0,7)=="bia_on")
+      {
+        g_client.write("*DEBUG: BIA LEDS ON*");
+        digitalWrite(g_pin,HIGH);          // FERMETURE B
+        cmdnok = 0;
+      }     
+     
+      if (mycommand.substring(0,7)=="bia_off")
+      {
+        g_client.write("*DEBUG: BIA LEDS OFF*");
+        digitalWrite(g_pin,LOW);          // FERMETURE B
+        cmdnok = 0;
+      }     
     }
     //////////////////////////////////////////////// FIN EVOLUTION ETATS ///////////////////////////////////////////////////
     // Controller status command parsing
@@ -321,9 +376,10 @@ void Command(EthernetClient g_client, String mycommand){
     case 1:
       //Timer1.setPwmDuty(g_pin, 0);  // FORCAGE BIA ETEINTE
       digitalWrite(g_pin, LOW);
-      
-       digitalWrite(7,HIGH);          // OUVERTURE SHUTTER B
-       digitalWrite(6,HIGH);          // OUVERTURE SHUTTER R
+     
+      digitalWrite(7,HIGH);          // OUVERTURE SHUTTER B
+      digitalWrite(6,HIGH);          // OUVERTURE SHUTTER R
+         
       break;
     // //////////////////////////////////////////////////////////////////ACTIONS DU MODE BIA//
     case 2:
@@ -336,6 +392,11 @@ void Command(EthernetClient g_client, String mycommand){
 
 }
 
+
+void software_reset() // Restarts program from beginning but does not reset the peripherals and registers
+{
+asm volatile ("  jmp 0");  
+} 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////BOUCLE PRINCIPALE///////////////////////////////////////////////////////////////////////////////////////
