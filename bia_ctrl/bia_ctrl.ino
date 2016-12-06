@@ -120,6 +120,11 @@ void Timer()
   }
 }
 
+bool CheckCommand(String command, String keyword)
+{
+  int l = keyword.length();
+  return (command.substring(0,l)== keyword);
+}
 
 void SetPeriod(int d)
 {
@@ -179,25 +184,32 @@ void Command(EthernetClient g_client, String mycommand){
   switch (bia_mode) {
     case 0:
     // We are in Idle state
-      if (mycommand.substring(0,6)=="bia_on"){
+      if (CheckCommand(mycommand,"bia_on"))
+      {
         bia_mode = 2;
-        cmdnok = 0;}
-      if (mycommand.substring(0,7)=="bia_off"){
+        cmdnok = 0;
+      }
+      if (CheckCommand(mycommand,"bia_off"))
+      {
         bia_mode = 0;
-        cmdnok = 0;}
-      if (mycommand.substring(0,9)=="shut_open"){
+        cmdnok = 0;
+      }
+      if (CheckCommand(mycommand,"shut_open"))
+      {
         bia_mode = 1;
-        cmdnok = 0;}
-      if (mycommand.substring(0,10)=="shut_close"){
+        cmdnok = 0;
+      }
+      if (CheckCommand(mycommand,"shut_close"))
+      {
         bia_mode = 0;
         cmdnok = 0;}
         
-      if (mycommand.substring(0,10)=="reboot")
+      if (CheckCommand(mycommand,"reboot"))
       {
         software_reset();
       }
       
-      if (mycommand.substring(0,10)=="debug")
+      if (CheckCommand(mycommand,"debug"))
       {
         bia_mode = 3;
         cmdnok = 0;
@@ -207,78 +219,106 @@ void Command(EthernetClient g_client, String mycommand){
  
     case 1:
     // We are in Shutter state
-      if (mycommand.substring(0,9)=="shut_open"){
+      if (CheckCommand(mycommand,"shut_open"))
+      {
         bia_mode = 1;
-        cmdnok = 0;}
-      if (mycommand.substring(0,10)=="shut_close"){
+        cmdnok = 0;
+      }
+      
+      if (CheckCommand(mycommand,"shut_close"))
+      {
         bia_mode = 0;
-        cmdnok = 0;}
+        cmdnok = 0;
+      }
     
-      if (mycommand.substring(0,6)=="bia_on"){
+      if (CheckCommand(mycommand,"bia_on"))
+      {
         g_client.write("intlk"); 
-        cmdnok  = 1;}
+        cmdnok  = 1;
+      }
 
-      if (mycommand.substring(0,7)=="bia_off"){
+      if (CheckCommand(mycommand,"bia_off"))
+      {
         g_client.write("intlk"); 
-        cmdnok  = 1;}        
+        cmdnok  = 1;
+      }        
       break;
 
     case 2:
     // We are in BIA state
-      if (mycommand.substring(0,7)=="bia_off"){
+      if (CheckCommand(mycommand,"bia_off"))
+      {
         bia_mode= 0;
-        cmdnok = 0;}
-      if (mycommand.substring(0,6)=="bia_on"){
-        bia_mode= 2;
-        cmdnok = 0;}
+        cmdnok = 0;
+      }
       
-      if (mycommand.substring(0,9)=="shut_open"){ 
+      if (CheckCommand(mycommand,"bia_on"))
+      {
+        bia_mode= 2;
+        cmdnok = 0;
+      }
+      
+      if (CheckCommand(mycommand,"shut_open"))
+      { 
         g_client.write("intlk");
-        cmdnok = 1;}
-      if (mycommand.substring(0,10)=="shut_close"){ 
+        cmdnok = 1;
+      }
+      if (CheckCommand(mycommand,"shut_close"))
+      { 
         g_client.write("intlk");
-        cmdnok = 1;}
+        cmdnok = 1;
+      }
         
       break;
       
       case 3:
       //Debug mode : we can operate stuff individually
       //Warning, this is potentially dangerous, use with caution.
-      if (mycommand.substring(0,7)=="exit"){
+      if (CheckCommand(mycommand,"exit"))
+      {
         g_client.write("*DEBUG: Exiting Debug mode.*");
         bia_mode= 0;
-        cmdnok = 0;}//Debug mode exit.
+        cmdnok = 0;
+      }//Debug mode exit.
         
-      if (mycommand.substring(0,7)=="red_open"){
+      if (CheckCommand(mycommand,"red_open"))
+      {
         digitalWrite(6,HIGH);          // OUVERTURE SHUTTER R
         g_client.write("*DEBUG: RED SHUTTER OPEN*");
-        cmdnok = 0;}
+        cmdnok = 0;
+      }
         
         
-      if (mycommand.substring(0,7)=="blue_open"){
+      if (CheckCommand(mycommand,"blue_open"))
+      {
         digitalWrite(7,HIGH);          // OUVERTURE SHUTTER B
         g_client.write("*DEBUG: BLUE SHUTTER OPEN*");
-        cmdnok = 0;}
+        cmdnok = 0;
+      }
       
-      if (mycommand.substring(0,7)=="red_close"){
+      if (CheckCommand(mycommand,"red_close"))
+      {
         g_client.write("*DEBUG: RED SHUTTER CLOSED*");
         digitalWrite(6,LOW);          // FERMETURE R
-        cmdnok = 0;}
+        cmdnok = 0;
+      }
         
         
-      if (mycommand.substring(0,7)=="blue_close"){
+      if (CheckCommand(mycommand,"blue_close"))
+      {
         g_client.write("*DEBUG: BLUE SHUTTER CLOSED*");
         digitalWrite(7,LOW);          // FERMETURE B
-        cmdnok = 0;}     
+        cmdnok = 0;
+      }     
         
-      if (mycommand.substring(0,7)=="bia_on")
+      if (CheckCommand(mycommand,"bia_on"))
       {
         g_client.write("*DEBUG: BIA LEDS ON*");
         digitalWrite(g_pin,HIGH);          // FERMETURE B
         cmdnok = 0;
       }     
      
-      if (mycommand.substring(0,7)=="bia_off")
+      if (CheckCommand(mycommand,"bia_off"))
       {
         g_client.write("*DEBUG: BIA LEDS OFF*");
         digitalWrite(g_pin,LOW);          // FERMETURE B
@@ -288,31 +328,42 @@ void Command(EthernetClient g_client, String mycommand){
     //////////////////////////////////////////////// FIN EVOLUTION ETATS ///////////////////////////////////////////////////
     // Controller status command parsing
   
-  if (mycommand.substring(0,4)=="init"){
+  if (CheckCommand(mycommand,"init"))
+  {
     bia_mode = 0;
-    cmdnok = 0;}
+    cmdnok = 0;
+  }
         
-  if (mycommand.substring(0,8)=="statword"){
+  if (CheckCommand(mycommand,"statword"))
+  {
     g_client.write(statword); 
     g_client.write("\0");
-    cmdnok = 1;}
+    cmdnok = 1;
+  }
     
-  if (mycommand.substring(0,6)=="status"){ 
+  if (CheckCommand(mycommand,"status"))
+  { 
     g_client.print(bia_mode);
-    cmdnok = 1;}
+    cmdnok = 1;
+  }
 
-  if (mycommand.substring(0,8)=="pulse_on"){
+  if (CheckCommand(mycommand,"pulse_on"))
+  {
     PulseMode = true;
-    cmdnok = 0;}    
+    cmdnok = 0;
+  }    
     
-  if (mycommand.substring(0,9)=="pulse_off"){
+  if (CheckCommand(mycommand,"pulse_off"))
+  {
     PulseMode = false;
-    cmdnok = 0;}    
+    cmdnok = 0;
+  }    
 
   
 ///////////////////////////////////// PROGRAMMATION DU TEMPS DE CYCLE TIMER PWM BIA /////////////////////////////////////////
   long v;
-  if (mycommand.substring(0,10)=="set_period") {
+  if (CheckCommand(mycommand,"set_period")) 
+  {
     int mylen=mycommand.length()-2;
     String inter=mycommand.substring(10,mylen);
     
@@ -322,44 +373,58 @@ void Command(EthernetClient g_client, String mycommand){
       SetPeriod(v);} //v is in ms
    
     Serial.println(g_aperiod);
-    cmdnok = 0;}
+    cmdnok = 0;
+  }
   
-  if (mycommand.substring(0,8)=="set_duty"){
+  if (CheckCommand(mycommand,"set_duty"))
+  {
     int mylen=mycommand.length()-2;
     String inter=mycommand.substring(8,mylen);
     
     v =inter.toInt();
-    if ((v>0) && (v<256)){
-      g_aduty = v;}
+    if ((v>0) && (v<256))
+    {
+      g_aduty = v;
+    }
   
     Serial.println(g_aduty);
-    cmdnok = 0;}
+    cmdnok = 0;
+  }
   
-  if (mycommand.substring(0,10)=="get_period"){
+  if (CheckCommand(mycommand,"get_period"))
+  {
     g_client.print(g_aperiod);
-    cmdnok = 1;} 
+    cmdnok = 1;
+  } 
     
-  if (mycommand.substring(0,8)=="get_duty"){
+  if (CheckCommand(mycommand,"get_duty"))
+  {
     g_client.print(g_aduty);
-    cmdnok = 1;} 
+    cmdnok = 1;
+  } 
     
     
    ////////////////////////////////////////////////////////////////////////////////////////////////ARRET SERVEUR /////////////////////////////////////////////////////////////////////////
-  if (mycommand.substring(0,4)=="stop"){
+  if (CheckCommand(mycommand,"stop"))
+  {
     bia_mode = 0;
     g_client.write("ok\r\n");
     g_client.stop();
-    return ;}
+    return ;
+  }
   
   /////////////////////////////////////////////////////////////////////////////////////////////// AFFICHAGE COMMANDE NOK ///////////////////////////////////////////////////////////////////
-  if (cmdnok<2){
+  if (cmdnok<2)
+  {
     g_client.write("ok\r\n");
   }
-  else {
+  else 
+  {
     g_client.write("nok\r\n");}
  
-  if (cmdnok==1){
-    return;}
+  if (cmdnok==1)
+    return;
+  
   
     
 ///////////////////////////////////// ACTIONS FAITES SELON MODE ACTUEL BIA /////////////////////////////////////////////////////
