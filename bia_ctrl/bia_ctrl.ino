@@ -63,9 +63,9 @@
     char statword [] = {"00000000"};
     
     #define STATUS_BCRC        0x12 //Both shutters closed no error
-    #define STATUS_BCRO        0x0A //Blue CLOSED Red OPEN no error
-    #define STATUS_BORC        0x11 //Blue OPEN Red CLOSED no error
-    #define STATUS_BORO        0x09 //Blue OPEN Red OPEN no error
+    #define STATUS_BCRO        0x14 //Blue CLOSED Red OPEN no error
+    #define STATUS_BORC        0x22 //Blue OPEN Red CLOSED no error
+    #define STATUS_BORO        0x24 //Blue OPEN Red OPEN no error
     
     int ShutterMotionTimeout = 2000;
     
