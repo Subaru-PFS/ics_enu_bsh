@@ -172,7 +172,7 @@
       return i;
     }
     
-    void StatusEvolve(int command, EthernetClient g_client)
+    bool StatusEvolve(int command, EthernetClient g_client)
     {
       bool cmdOk = false;
     
@@ -418,6 +418,9 @@
             }
             break;
           }
+      }
+      if (!cmdOk){
+        return cmdOk;
       }
     
       switch (bia_mode)
