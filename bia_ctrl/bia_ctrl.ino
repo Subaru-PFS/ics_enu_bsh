@@ -21,12 +21,16 @@
     
     String Commands[] =
     {
-      "bia_on", "bia_off",
-      "shut_open", "shut_close",
+      "bia_on", 
+      "bia_off",
+      "shut_open", 
+      "shut_close",
       "reboot",
-      "blue_open", "blue_close",
-      "red_open", "red_close",
-      "NOP"
+      "blue_open", 
+      "blue_close",
+      "red_open", 
+      "red_close",
+      "init"
     };
     #define COMMANDS_COUNT  10
     
@@ -214,9 +218,15 @@
     
               case 8://red_close : close red shutter while already closed NOK
                 break;
-    
-              case 9://error / command not found NOK
+
+              case 9://init : close both shutters, bia_off
+                bia_mode = 0;
+                CmdOk = true;
                 break;
+
+              case 10://error / command not found NOK
+                break;
+
             }
             break;
           }
@@ -254,7 +264,12 @@
               case 8://red_close
                 break;
     
-              case 9://error / command not found NOK
+              case 9://init : close both shutters, bia_off
+                bia_mode = 0;
+                CmdOk = true;
+                break;
+
+              case 10://error / command not found NOK
                 break;
             }
             break;
@@ -296,7 +311,12 @@
                 CmdOk = true;
                 break;
     
-              case 9://error / command not found NOK
+              case 9://init : close both shutters, bia_off
+                bia_mode = 0;
+                CmdOk = true;
+                break;
+
+              case 10://error / command not found NOK
                 break;
             }
             break;
@@ -338,7 +358,12 @@
               case 8://red_close : close red shutter while already closed NOK
                 break;
     
-              case 9://error / command not found NOK
+              case 9://init : close both shutters, bia_off
+                bia_mode = 0;
+                CmdOk = true;
+                break;
+
+              case 10://error / command not found NOK
                 break;
             }
             break;
@@ -378,7 +403,12 @@
                 bia_mode = 0;
                 break;
     
-              case 9://error / command not found NOK
+              case 9://init : close both shutters, bia_off
+                bia_mode = 0;
+                CmdOk = true;
+                break;
+
+              case 10://error / command not found NOK
                 break;
             }
             break;
@@ -564,12 +594,7 @@
       StatusEvolve(cmd, g_client);
           
       // Controller status command parsing    
-      if (CheckCommand(mycommand, "init"))
-      {
-        bia_mode = 0;
-        cmdnok = 0;
-      }
-    
+      
       if (CheckCommand(mycommand, "statword"))
       {
         g_client.print(StatWord, BIN);
