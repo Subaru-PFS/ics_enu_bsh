@@ -44,8 +44,6 @@
     int bia_mode;
     bool BIAIsOn;
     
-    int cmdnok;
-    
     int g_pin; // bia pin#
     long g_aduty; // duty
     long g_aperiod; // period
@@ -176,7 +174,7 @@
     
     void StatusEvolve(int command, EthernetClient g_client)
     {
-      bool CmdOk = false;
+      bool cmdOk = false;
     
       switch (bia_mode)
       {
@@ -186,7 +184,7 @@
             {
               case 0://bia_on OK
                 bia_mode = 10;
-                CmdOk = true;
+                cmdOk = true;
                 break;
     
               case 1://bia_off command while already off NOK
@@ -194,7 +192,7 @@
     
               case 2://shut_open, open both shutters OK
                 bia_mode = 20;
-                CmdOk = true;
+                cmdOk = true;
                 break;
     
               case 3://shut_close while they are already closed NOK
@@ -205,7 +203,7 @@
     
               case 5://blue_open : open blue shutter only OK
                 bia_mode = 30;
-                CmdOk = true;
+                cmdOk = true;
                 break;
     
               case 6://blue_close while blue shutter is already closed NOK
@@ -213,7 +211,7 @@
     
               case 7://red_open : open red shutter only OK
                 bia_mode = 40;
-                CmdOk = true;
+                cmdOk = true;
                 break;
     
               case 8://red_close : close red shutter while already closed NOK
@@ -221,7 +219,7 @@
 
               case 9://init : close both shutters, bia_off
                 bia_mode = 0;
-                CmdOk = true;
+                cmdOk = true;
                 break;
 
               case 10://error / command not found NOK
@@ -240,7 +238,7 @@
     
               case 1://bia_off
                 bia_mode = 0;
-                CmdOk = true;
+                cmdOk = true;
                 break;
     
               case 2://shut_open
@@ -266,7 +264,7 @@
     
               case 9://init : close both shutters, bia_off
                 bia_mode = 0;
-                CmdOk = true;
+                cmdOk = true;
                 break;
 
               case 10://error / command not found NOK
@@ -290,6 +288,7 @@
     
               case 3://shut_close
                 bia_mode = 0;
+                cmdOk = true;
                 break;
     
               case 4://reboot OK
@@ -300,7 +299,7 @@
     
               case 6://blue_close
                 bia_mode = 40;
-                CmdOk = true;
+                cmdOk = true;
                 break;
     
               case 7://red_open
@@ -308,12 +307,12 @@
     
               case 8://red_close
                 bia_mode = 30;
-                CmdOk = true;
+                cmdOk = true;
                 break;
     
               case 9://init : close both shutters, bia_off
                 bia_mode = 0;
-                CmdOk = true;
+                cmdOk = true;
                 break;
 
               case 10://error / command not found NOK
@@ -335,6 +334,7 @@
     
               case 2://shut_open, open both shutters OK
                 bia_mode = 20;
+                cmdOk = true;
                 break;
     
               case 3://shut_close while they are already closed NOK
@@ -349,10 +349,12 @@
     
               case 6://blue_close while blue shutter is already closed NOK
                 bia_mode = 0;
+                cmdOk = true;
                 break;
     
               case 7://red_open : open red shutter only OK
                 bia_mode = 20;
+                cmdOk = true;
                 break;
     
               case 8://red_close : close red shutter while already closed NOK
@@ -360,7 +362,7 @@
     
               case 9://init : close both shutters, bia_off
                 bia_mode = 0;
-                CmdOk = true;
+                cmdOk = true;
                 break;
 
               case 10://error / command not found NOK
@@ -381,6 +383,7 @@
     
               case 2://shut_open, open both shutters OK
                 bia_mode = 20;
+                cmdOk = true;
                 break;
     
               case 3://shut_close while they are already closed NOK
@@ -391,6 +394,7 @@
     
               case 5://blue_open : open blue shutter only OK
                 bia_mode = 20;
+                cmdOk = true;
                 break;
     
               case 6://blue_close while blue shutter is already closed NOK
@@ -401,11 +405,12 @@
     
               case 8://red_close : close red shutter while already closed NOK
                 bia_mode = 0;
+                cmdOk = true;
                 break;
     
               case 9://init : close both shutters, bia_off
                 bia_mode = 0;
-                CmdOk = true;
+                cmdOk = true;
                 break;
 
               case 10://error / command not found NOK
