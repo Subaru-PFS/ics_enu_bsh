@@ -651,6 +651,16 @@
         g_client.print(g_aduty);
         cmdOk = true;
       }
+
+      if (CheckCommand(mycommand, "get_param"))
+      {
+        g_client.print(PulseMode);
+        g_client.print(',');
+        g_client.print(g_aperiod);
+        g_client.print(',');
+        g_client.print(g_aduty);
+        cmdOk= true;
+      } 
       
 
       if (CheckCommand(mycommand, "set_timeout"))
