@@ -437,8 +437,8 @@
 //          ReportCompletion(STATUS_BCRC);
           if (!WaitForCompletion(STATUS_BCRC))
           {
-            cmdOk=false;
             g_client.write("shutter switch timeout");
+            cmdOk=false;
           }
 
           break;
@@ -450,14 +450,10 @@
           digitalWrite(7, LOW);
           digitalWrite(6, LOW);
           
-          if (WaitForCompletion(STATUS_BCRC))
+          if (!WaitForCompletion(STATUS_BCRC))
           {
-            g_client.println("ok");
-          }
-          else
-          {
-            g_client.print("nok ");
-            g_client.println(StatWord, BIN);
+            g_client.write("shutter switch timeout");
+            cmdOk=false;
           }
           
           break;
@@ -471,10 +467,10 @@
           digitalWrite(6, HIGH);//OPEN
           
           
-          if (!WaitForCompletion(STATUS_BCRC))
+          if (!WaitForCompletion(STATUS_BORO))
           {
-            cmdOk=false;
             g_client.write("shutter switch timeout");
+            cmdOk=false;
           }
 
           break;
@@ -487,14 +483,10 @@
           digitalWrite(6, LOW);  //CLOSED
           
 //          ReportCompletion(STATUS_BORC);
-          if (WaitForCompletion(STATUS_BORC))
+          if (!WaitForCompletion(STATUS_BORC))
           {
-            g_client.println("ok");
-          }
-          else
-          {
-            g_client.print("nok ");
-            g_client.println(StatWord, BIN);
+            g_client.write("shutter switch timeout");
+            cmdOk=false;
           }
 
           break;
@@ -507,10 +499,10 @@
           digitalWrite(6, HIGH);  //OPEN
           
 //          ReportCompletion(STATUS_BCRO);
-          if (!WaitForCompletion(STATUS_BCRC))
+          if (!WaitForCompletion(STATUS_BCRO))
           {
-            cmdOk=false;
             g_client.write("shutter switch timeout");
+            cmdOk=false;
           }
 
           break;
@@ -558,7 +550,7 @@
     bool WaitForCompletion(int val)
     {
       int t, now;
-      bool v;
+      int v;
       
       t = millis();
       now = t;
