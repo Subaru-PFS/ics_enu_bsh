@@ -592,40 +592,37 @@
     void Command(EthernetClient g_client, String mycommand)
     {
     
-      cmdnok  = 2;
-         
-         
       UpdateStatusWord();
       
       int cmd = CommandCode(mycommand);
-      
-      StatusEvolve(cmd, g_client);
+
+      bool cmdOk;
+      cmdOk = StatusEvolve(cmd, g_client);
           
       // Controller status command parsing    
       
       if (CheckCommand(mycommand, "statword"))
       {
-        g_client.print(StatWord, BIN);
-        g_client.write("\0");
-        cmdnok = 1;
+        g_client.print(StatWord);
+        cmdOk = true;
       }
     
       if (CheckCommand(mycommand, "status"))
       {
         g_client.print(bia_mode);
-        cmdnok = 1;
+        cmdOk = true;
       }
     
       if (CheckCommand(mycommand, "pulse_on"))
       {
         PulseMode = true;
-        cmdnok = 0;
+        cmdOk = true;
       }
     
       if (CheckCommand(mycommand, "pulse_off"))
       {
         PulseMode = false;
-        cmdnok = 0;
+        cmdOk = true;
       }
     
     
@@ -643,7 +640,7 @@
         } //v is in ms
     
         Serial.println(g_aperiod);
-        cmdnok = 0;
+        cmdOk = true;
       }
     
       if (CheckCommand(mycommand, "set_duty"))
@@ -658,19 +655,19 @@
         }
     
         Serial.println(g_aduty);
-        cmdnok = 0;
+        cmdOk = true;
       }
     
       if (CheckCommand(mycommand, "get_period"))
       {
         g_client.print(g_aperiod);
-        cmdnok = 1;
+        cmdOk = true;
       }
     
       if (CheckCommand(mycommand, "get_duty"))
       {
         g_client.print(g_aduty);
-        cmdnok = 1;
+        cmdOk = true;
       }
       
 
@@ -685,7 +682,7 @@
         } //v is in ms
         
         Serial.println(ShutterMotionTimeout);
-        cmdnok = 0;
+        cmdOk = true;
       }
     
     
@@ -699,16 +696,15 @@
       }
     
       /////////////////////////////////////////////////////////////////////////////////////////////// AFFICHAGE COMMANDE NOK ///////////////////////////////////////////////////////////////////
-      if (cmdnok < 2)
-      {
-        g_client.write("ok\r\n");
-      }
-      else
+      if (!cmdOk)
       {
         g_client.write("nok\r\n");
       }
+      else
+      {
+        g_client.write("ok\r\n");
+      }
     
-      if (cmdnok == 1)
         return;   
     }
     
