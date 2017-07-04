@@ -339,6 +339,7 @@
     
               case 3://shut_close while they are already closed NOK
                 bia_mode = 0;
+                cmdOk = true;
                 break;
     
               case 4://reboot OK
@@ -434,14 +435,10 @@
           digitalWrite(6, LOW);
 
 //          ReportCompletion(STATUS_BCRC);
-          if (WaitForCompletion(STATUS_BCRC))
+          if (!WaitForCompletion(STATUS_BCRC))
           {
-            g_client.println("ok");
-          }
-          else
-          {
-            g_client.print("nok ");
-            g_client.println(StatWord, BIN);
+            cmdOk=false;
+            g_client.write("shutter switch timeout");
           }
 
           break;
@@ -474,14 +471,10 @@
           digitalWrite(6, HIGH);//OPEN
           
           
-          if (WaitForCompletion(STATUS_BORO))
+          if (!WaitForCompletion(STATUS_BCRC))
           {
-            g_client.println("ok");
-          }
-          else
-          {
-            g_client.print("nok ");
-            g_client.println(StatWord, BIN);
+            cmdOk=false;
+            g_client.write("shutter switch timeout");
           }
 
           break;
@@ -514,14 +507,10 @@
           digitalWrite(6, HIGH);  //OPEN
           
 //          ReportCompletion(STATUS_BCRO);
-          if (WaitForCompletion(STATUS_BCRO))
+          if (!WaitForCompletion(STATUS_BCRC))
           {
-            g_client.println("ok");
-          }
-          else
-          {
-            g_client.print("nok ");
-            g_client.println(StatWord, BIN);
+            cmdOk=false;
+            g_client.write("shutter switch timeout");
           }
 
           break;
