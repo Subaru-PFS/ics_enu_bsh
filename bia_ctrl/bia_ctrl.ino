@@ -180,15 +180,15 @@
           {
             switch (command)
             {
-              case 0://bia_on OK
+              case 0://bia_on, OK
                 bia_mode = 10;
                 cmdOk = true;
                 break;
     
-              case 1://bia_off command while already off NOK
+              case 1://bia_off while already off NOK
                 break;
     
-              case 2://shut_open, open both shutters OK
+              case 2://shut_open : open both shutters OK
                 bia_mode = 20;
                 cmdOk = true;
                 break;
@@ -215,7 +215,7 @@
               case 8://red_close : close red shutter while already closed NOK
                 break;
 
-              case 9://init : close both shutters, bia_off
+              case 9://init : close both shutters, bia_off OK
                 bia_mode = 0;
                 cmdOk = true;
                 break;
@@ -239,28 +239,28 @@
                 cmdOk = true;
                 break;
     
-              case 2://shut_open
+              case 2://shut_open, INTERLOCK NOK
                 break;
     
-              case 3://shut_close
+              case 3://shut_close while shutters are already closed NOK
                 break;
     
               case 4://reboot
                 break;
     
-              case 5://blue_open
+              case 5://blue_open, INTERLOCK NOK
                 break;
     
-              case 6://blue_close
+              case 6://blue_close while shutter blue is already closed NOK
                 break;
     
-              case 7://red_open
+              case 7://red_open, INTERLOCK NOK
                 break;
     
-              case 8://red_close
+              case 8://red_close while shutter red already closed NOK
                 break;
     
-              case 9://init : close both shutters, bia_off
+              case 9://init : close both shutters, bia_off, OK
                 bia_mode = 0;
                 cmdOk = true;
                 break;
@@ -275,16 +275,16 @@
           {
             switch (command)
             {
-              case 0://bia_on NOK
+              case 0://bia_on, INTERLOCK NOK
                 break;
     
-              case 1://bia_off
+              case 1://bia_off while bia is already off NOK
                 break;
     
-              case 2://shut_open
+              case 2://shut_open while shutters are already open NOK
                 break;
     
-              case 3://shut_close
+              case 3://shut_close : close both shutters OK
                 bia_mode = 0;
                 cmdOk = true;
                 break;
@@ -292,23 +292,23 @@
               case 4://reboot OK
                 break;
     
-              case 5://blue_open
+              case 5://blue_open while shutter blue is already open, NOK
                 break;
     
-              case 6://blue_close
+              case 6://blue_close : close blue shutter only OK
                 bia_mode = 40;
                 cmdOk = true;
                 break;
     
-              case 7://red_open
+              case 7://red_open while shutter red is already open, NOK
                 break;
     
-              case 8://red_close
+              case 8://red_close : close red shutter only OK
                 bia_mode = 30;
                 cmdOk = true;
                 break;
     
-              case 9://init : close both shutters, bia_off
+              case 9://init : close both shutters, bia_off, OK
                 bia_mode = 0;
                 cmdOk = true;
                 break;
@@ -330,12 +330,12 @@
               case 1://bia_off command while already off NOK
                 break;
     
-              case 2://shut_open, open both shutters OK
+              case 2://shut_open : open both shutters OK
                 bia_mode = 20;
                 cmdOk = true;
                 break;
     
-              case 3://shut_close while they are already closed NOK
+              case 3://shut_close : close both shutters OK
                 bia_mode = 0;
                 cmdOk = true;
                 break;
@@ -343,10 +343,10 @@
               case 4://reboot OK
                 break;
     
-              case 5://blue_open : open blue shutter only OK
+              case 5://blue_open while blue shutter is already open NOK
                 break;
     
-              case 6://blue_close while blue shutter is already closed NOK
+              case 6://blue_close : close blue shutter only OK
                 bia_mode = 0;
                 cmdOk = true;
                 break;
@@ -356,10 +356,10 @@
                 cmdOk = true;
                 break;
     
-              case 8://red_close : close red shutter while already closed NOK
+              case 8://red_close while red shutter already closed NOK
                 break;
     
-              case 9://init : close both shutters, bia_off
+              case 9://init, close both shutters, bia_off OK
                 bia_mode = 0;
                 cmdOk = true;
                 break;
@@ -380,12 +380,14 @@
               case 1://bia_off command while already off NOK
                 break;
     
-              case 2://shut_open, open both shutters OK
+              case 2://shut_open : open both shutters OK
                 bia_mode = 20;
                 cmdOk = true;
                 break;
     
-              case 3://shut_close while they are already closed NOK
+              case 3://shut_close : close both shutters OK
+                bia_mode = 0;
+                cmdOk = true;
                 break;
     
               case 4://reboot OK
@@ -399,15 +401,15 @@
               case 6://blue_close while blue shutter is already closed NOK
                 break;
     
-              case 7://red_open : open red shutter only OK
+              case 7://red_open while red shutter is already open NOK
                 break;
     
-              case 8://red_close : close red shutter while already closed NOK
+              case 8://red_close : close red shutter only OK
                 bia_mode = 0;
                 cmdOk = true;
                 break;
     
-              case 9://init : close both shutters, bia_off
+              case 9://init : close both shutters, bia_off OK
                 bia_mode = 0;
                 cmdOk = true;
                 break;
