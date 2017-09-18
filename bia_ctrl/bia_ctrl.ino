@@ -59,8 +59,8 @@
     bool PulseMode;
     
     #define STATUS_BCRC        0x52 //Both shutters closed no error
-    #define STATUS_BCRO        0x54 //Blue CLOSED Red OPEN no error
-    #define STATUS_BORC        0x62 //Blue OPEN Red CLOSED no error
+    #define STATUS_BCRO        0x62 //Blue CLOSED Red OPEN no error
+    #define STATUS_BORC        0x54 //Blue OPEN Red CLOSED no error
     #define STATUS_BORO        0x64 //Blue OPEN Red OPEN no error
     
     int ShutterMotionTimeout = 2000;
