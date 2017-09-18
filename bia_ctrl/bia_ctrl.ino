@@ -537,12 +537,12 @@
       shr_err_status = digitalRead(2);  //RS error //
 
       StatWord = (1<<6)+
-                 (shb_open_status<<5)+
-                 (shb_close_status<<4)+
-                 (shb_err_status<<3)+
-                 (shr_open_status<<2)+
-                 (shr_close_status<<1)+
-                 shr_err_status;
+                 (!(shb_open_status)<<5)+
+                 (!(shb_close_status)<<4)+
+                 (!(shb_err_status)<<3)+
+                 (!(shr_open_status)<<2)+
+                 (!(shr_close_status)<<1)+
+                 (!shr_err_status);
    
       return StatWord;
     }
