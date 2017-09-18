@@ -59,8 +59,8 @@
     bool PulseMode;
     
     #define STATUS_BCRC        0x52 //Both shutters closed no error
-    #define STATUS_BCRO        0x62 //Blue CLOSED Red OPEN no error
-    #define STATUS_BORC        0x54 //Blue OPEN Red CLOSED no error
+    #define STATUS_BCRO        0x54 //Blue CLOSED Red OPEN no error
+    #define STATUS_BORC        0x62 //Blue OPEN Red CLOSED no error
     #define STATUS_BORO        0x64 //Blue OPEN Red OPEN no error
     
     int ShutterMotionTimeout = 2000;
@@ -529,12 +529,12 @@
     int UpdateStatusWord()
     {
        ///// LECTURE EFFECTIVE DES STATUS SUR PORT IO ARDUINO //
-      shb_open_status = digitalRead(8);       // BS ouvert//
-      shb_close_status = digitalRead(5); // BS ferme //
-      shb_err_status = digitalRead(1); // BS error //
-      shr_open_status = digitalRead(3); // RS ouvert //
-      shr_close_status = digitalRead(4);  // RS fermé //
-      shr_err_status = digitalRead(2);  //RS error //
+      shb_open_status = digitalRead(3);       // BS ouvert//
+      shb_close_status = digitalRead(4); // BS ferme //
+      shb_err_status = digitalRead(2); // BS error //
+      shr_open_status = digitalRead(8); // RS ouvert //
+      shr_close_status = digitalRead(5);  // RS fermé //
+      shr_err_status = digitalRead(1);  //RS error //
 
       StatWord = (1<<6)+
                  (!(shb_open_status)<<5)+
