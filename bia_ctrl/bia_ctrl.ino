@@ -33,8 +33,42 @@
       "init"
     };
     #define COMMANDS_COUNT  10
+
+    #define USE_OLD_HARDWARE
+
+    #ifdef USE_OLD_HARDWARE
+       
+      // INPUT PINS DEFAULT
+      #define SHB_OPEN_PIN    3
+      #define SHB_CLOSE_PIN   4
+      #define SHB_ERROR_PIN   2
+      #define SHR_OPEN_PIN    8
+      #define SHR_CLOSE_PIN   5
+      #define SHR_ERROR_PIN   1
+
+      //OUTPUT PINS DEFAULT
+      #define LEDS_PIN        9
+      #define SHB_PIN         7
+      #define SHR_PIN         6
+    
+    #else
     
     
+      // INPUT PINS NEW HARDWARE
+      #define SHB_OPEN_PIN    A0
+      #define SHB_CLOSE_PIN   A1
+      #define SHB_ERROR_PIN   A2
+      #define SHR_OPEN_PIN    A3
+      #define SHR_CLOSE_PIN   A4
+      #define SHR_ERROR_PIN   A5    
+
+      //OUTPUT PINS NEW HARDWARE
+      #define LEDS_PIN        9
+      #define SHB_PIN         5
+      #define SHR_PIN         6
+
+    
+    #endif
     
     // telnet defaults to port 23
     EthernetServer g_server(23);
@@ -105,25 +139,26 @@
       //////////////////////////////////// PARAM BIA /////////////////////////////////////////
       g_aduty = 0; // 0% duty
       g_aperiod = 100; // 100000 = 100ms 1000 = 1ms
-      g_pin = 9;
+      g_pin = LEDS_PIN;
       BIAIsOn = false;
     
     
-      //////////////////////////////////// PARAM SHUTTERS /////////////////////////////////////////
-      // Config pin 7 en output (DF)
-      pinMode(1, INPUT);
-      pinMode(2, INPUT);
-      pinMode(3, INPUT);
-      pinMode(4, INPUT);
-      pinMode(5, INPUT);
-      pinMode(6, OUTPUT);
-      pinMode(7, OUTPUT);
-      pinMode(8, INPUT);
-    
-      pinMode(g_pin, OUTPUT);
-      digitalWrite(g_pin, LOW);
-      digitalWrite(6, LOW);
-      digitalWrite(g_pin, LOW);
+      //////////////////////////////////// PIN IO MODES ////////////////////////////////////////      
+      pinMode(SHB_OPEN_PIN, INPUT);
+      pinMode(SHB_CLOSE_PIN, INPUT);
+      pinMode(SHB_ERROR_PIN, INPUT);
+      
+      pinMode(SHR_OPEN_PIN, INPUT);      
+      pinMode(SHR_CLOSE_PIN, INPUT);
+      pinMode(SHR_ERROR_PIN, INPUT);
+      
+      pinMode(SHR_PIN, OUTPUT);
+      pinMode(SHB_PIN, OUTPUT);                
+      pinMode(LEDS_PIN, OUTPUT);
+      
+      digitalWrite(LEDS_PIN, LOW);
+      digitalWrite(SHR_PIN, LOW);     
+      digitalWrite(SHB_PIN, LOW);     
     
       MsTimer2::set(1000, Timer); // 500ms period
       MsTimer2::start();
@@ -136,7 +171,7 @@
       {
         if (!PulseMode)
         {
-          analogWrite(g_pin, g_aduty);
+          analogWrite(LEDS_PIN, g_aduty);
           return;
         }
     
@@ -145,13 +180,13 @@
           
           //Serial.print("ON ");
           //Serial.println(g_aduty);
-          analogWrite(g_pin, g_aduty);
+          analogWrite(LEDS_PIN, g_aduty);
           //digitalWrite(9, HIGH);
         }
         else
         {
           //Serial.println("OFF");
-          digitalWrite(g_pin, LOW);
+          digitalWrite(LEDS_PIN, LOW);
         }
         LedState = !LedState;
       }
@@ -429,10 +464,10 @@
         case 0:  //All off.
           BIAIsOn = false;
     
-          digitalWrite(g_pin, LOW);
+          digitalWrite(LEDS_PIN, LOW);
     
-          digitalWrite(7, LOW); //Both shutters closed
-          digitalWrite(6, LOW);
+          digitalWrite(SHR_PIN, LOW); //Both shutters closed
+          digitalWrite(SHB_PIN, LOW);
 
 //          ReportCompletion(STATUS_BCRC);
           if (!WaitForCompletion(STATUS_BCRC))
@@ -447,8 +482,8 @@
         case 10: //BIA is ON, shutters are closed
           BIAIsOn = true;
     
-          digitalWrite(7, LOW);
-          digitalWrite(6, LOW);
+          digitalWrite(SHR_PIN, LOW); //Both shutters closed
+          digitalWrite(SHB_PIN, LOW);
           
           if (!WaitForCompletion(STATUS_BCRC))
           {
@@ -461,10 +496,10 @@
         case 20: //BIA is OFF, shutters are OPEN
     
           BIAIsOn = false;
-          digitalWrite(g_pin, LOW);
+          digitalWrite(LEDS_PIN, LOW);
     
-          digitalWrite(7, HIGH);//OPEN
-          digitalWrite(6, HIGH);//OPEN
+          digitalWrite(SHR_PIN, HIGH); //Both shutters closed
+          digitalWrite(SHB_PIN, HIGH);
           
           
           if (!WaitForCompletion(STATUS_BORO))
@@ -477,10 +512,10 @@
     
         case 30:// BIA is OFF, Blue shutter is OPEN Red is CLOSED
           BIAIsOn = false;
-          digitalWrite(g_pin, LOW);
+          digitalWrite(LEDS_PIN, LOW);
     
-          digitalWrite(7, HIGH); //OPEN
-          digitalWrite(6, LOW);  //CLOSED
+          digitalWrite(SHB_PIN, HIGH); //OPEN
+          digitalWrite(SHR_PIN, LOW);  //CLOSED
           
 //          ReportCompletion(STATUS_BORC);
           if (!WaitForCompletion(STATUS_BORC))
@@ -493,10 +528,10 @@
     
         case 40://BIA OFF, Red Shutter open, Blue closed
           BIAIsOn = false;
-          digitalWrite(g_pin, LOW);
+          digitalWrite(LEDS_PIN, LOW);
     
-          digitalWrite(7, LOW); //CLOSED
-          digitalWrite(6, HIGH);  //OPEN
+          digitalWrite(SHB_PIN, LOW); //CLOSED
+          digitalWrite(SHR_PIN, HIGH);  //OPEN
           
 //          ReportCompletion(STATUS_BCRO);
           if (!WaitForCompletion(STATUS_BCRO))
@@ -529,12 +564,12 @@
     int UpdateStatusWord()
     {
        ///// LECTURE EFFECTIVE DES STATUS SUR PORT IO ARDUINO //
-      shb_open_status = digitalRead(3);       // BS ouvert//
-      shb_close_status = digitalRead(4); // BS ferme //
-      shb_err_status = digitalRead(2); // BS error //
-      shr_open_status = digitalRead(8); // RS ouvert //
-      shr_close_status = digitalRead(5);  // RS fermé //
-      shr_err_status = digitalRead(1);  //RS error //
+      shb_open_status = digitalRead(SHB_OPEN_PIN);       // BS ouvert//
+      shb_close_status = digitalRead(SHB_CLOSE_PIN); // BS ferme //
+      shb_err_status = digitalRead(SHB_ERROR_PIN); // BS error //
+      shr_open_status = digitalRead(SHR_OPEN_PIN); // RS ouvert //
+      shr_close_status = digitalRead(SHR_CLOSE_PIN);  // RS fermé //
+      shr_err_status = digitalRead(SHR_ERROR_PIN);  //RS error //
 
       StatWord = (1<<6)+
                  (!(shb_open_status)<<5)+
