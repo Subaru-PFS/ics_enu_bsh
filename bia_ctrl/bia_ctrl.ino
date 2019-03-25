@@ -1,21 +1,61 @@
+
+#include <SPI.h>
+#include <Ethernet2.h>
+
+#include <MsTimer2.h>
+
     
     
+// Enter a MAC address and IP address for your controller below.
+// The IP address will be dependent on your local network.
+// gateway and subnet are optional:
+
+/* MAC ADDRESSES FOR BIA MODULES
+dhcp-host=a8:61:0a:ae:2a:91,bsh-enu1
+dhcp-host=a8:61:0a:ae:17:7c,bsh-enu2
+dhcp-host=a8:61:0a:ae:2d:84,bsh-enu3
+dhcp-host=a8:61:0a:ae:17:72,bsh-enu4
+ 
+dhcp-host=a8:61:0a:ae:14:fc,bsh-enu5
+dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
+*  
+ */
+
     
+    //Uncomment the line below depending on the BSH
+    #define ENU1
+    //#define ENU2
+    //#define ENU3
+    //#define ENU4    
     
-    #include <SPI.h>
-    #include <Ethernet2.h>
-    
-    #include <MsTimer2.h>
-    
-    
-    
-    // Enter a MAC address and IP address for your controller below.
-    // The IP address will be dependent on your local network.
-    // gateway and subnet are optional:
-    
+    //#define ENU5
+    //#define ENU6
+         
     byte mac[] =
     {
-      0x90, 0xA2, 0xDA, 0x0F, 0xA0, 0x4F
+      #ifdef ENU1
+      0xA8,0x61,0x0A,0xAE,0x2A,0x91
+      #endif
+
+      #ifdef ENU2
+      0xA8,0x61,0x0A,0xAE,0x17,0x7C
+      #endif
+
+      #ifdef ENU3
+      0xA8,0x61,0x0A,0xAE,0x2D,0x84
+      #endif
+
+      #ifdef ENU4
+      0xA8,0x61,0x0A,0xAE,0x17,0x72
+      #endif
+
+      #ifdef ENU5
+      0xA8,0x61,0x0A,0xAE,0x14,0xFC
+      #endif
+
+      #ifdef ENU6
+      0xA8,0x61,0x0A,0xAE,0x13,0x25
+      #endif
     };
     
     
@@ -34,12 +74,26 @@
     };
     #define COMMANDS_COUNT  10
     
+      // INPUT PINS DEFAULT
+      #define SHB_OPEN_PIN    3
+      #define SHB_CLOSE_PIN   4
+      #define SHB_ERROR_PIN   2
+      #define SHR_OPEN_PIN    8
+      #define SHR_CLOSE_PIN   5
+      #define SHR_ERROR_PIN   1
+
+      #define PHR0_INPUT_PIN  A0
+      #define PHR1_INPUT_PIN  A1
+
+      //OUTPUT PINS DEFAULT
+      #define LEDS_PIN        9
+      #define SHB_PIN         7
+      #define SHR_PIN         6
     
     
     // telnet defaults to port 23
     EthernetServer g_server(23);
-    
-    
+        
     // BIA Controller MODES
     int bia_mode;
     bool BIAIsOn;
@@ -63,25 +117,14 @@
     #define STATUS_BORC        0x62 //Blue OPEN Red CLOSED no error
     #define STATUS_BORO        0x64 //Blue OPEN Red OPEN no error
     
-    int ShutterMotionTimeout = 2000;
-    
-    /*
-     ///// LECTURE EFFECTIVE DES STATUS SUR PORT IO ARDUINO //
-      shb_open_status = digitalRead(8);       // BS ouvert//
-      shb_close_status = digitalRead(5); // BS ferme //
-      shb_err_status = digitalRead(1); // BS error //
-      shr_open_status = digitalRead(3); // RS ouvert //
-      shr_close_status = digitalRead(4);  // RS fermé //
-      shr_err_status = digitalRead(2);  //RS error //
-    */
+    int ShutterMotionTimeout = 2000;   
     
     int StatWord;
     
     // setup
     void setup()
     {
-      Serial.begin(9600);
-      // this check is only needed on the Leonardo:
+      Serial.begin(9600);      
       Serial.println("BIADuino v2.1");
     
       if (Ethernet.begin(mac) == 0) 
@@ -101,31 +144,44 @@
     
       // Set BIA :ode to IDLE
       bia_mode = 0;
+
+      //logic seems reversed for shutter command so we redefine the values here
+      #define SHUTTER_LOW HIGH
+      #define SHUTTER_HIGH LOW
     
       //////////////////////////////////// PARAM BIA /////////////////////////////////////////
       g_aduty = 0; // 0% duty
       g_aperiod = 100; // 100000 = 100ms 1000 = 1ms
-      g_pin = 9;
+      g_pin = LEDS_PIN;
       BIAIsOn = false;
     
     
-      //////////////////////////////////// PARAM SHUTTERS /////////////////////////////////////////
-      // Config pin 7 en output (DF)
-      pinMode(1, INPUT);
-      pinMode(2, INPUT);
-      pinMode(3, INPUT);
-      pinMode(4, INPUT);
-      pinMode(5, INPUT);
-      pinMode(6, OUTPUT);
-      pinMode(7, OUTPUT);
-      pinMode(8, INPUT);
+      //////////////////////////////////// PIN IO MODES ////////////////////////////////////////            
+      //Shutter status pins on Bonn side are optocouplers so pullup is needed (was cabled on first hardware)
+      
+      pinMode(SHB_OPEN_PIN, INPUT_PULLUP);
+      pinMode(SHB_CLOSE_PIN, INPUT_PULLUP);
+      pinMode(SHB_ERROR_PIN, INPUT_PULLUP);
+      
+      pinMode(SHR_OPEN_PIN, INPUT_PULLUP);      
+      pinMode(SHR_CLOSE_PIN, INPUT_PULLUP);
+      pinMode(SHR_ERROR_PIN, INPUT_PULLUP);
+
+      //Photoresistors
+      pinMode(PHR0_INPUT_PIN, INPUT);//no need for pullup for these as it is cabled.
+      pinMode(PHR1_INPUT_PIN, INPUT);//no need for pullup for these as it is cabled.
+
+      //Outputs
+      pinMode(SHR_PIN, OUTPUT);//RED Shutter command pin
+      pinMode(SHB_PIN, OUTPUT);//BLUE Shutter command pin
+      pinMode(LEDS_PIN, OUTPUT);//BIA LEDs command pin
+
+      //Initial status
+      digitalWrite(LEDS_PIN, LOW);//Start with BIA OFF, both shutters CLOSED
+      digitalWrite(SHR_PIN, SHUTTER_LOW);     
+      digitalWrite(SHB_PIN, SHUTTER_LOW);     
     
-      pinMode(g_pin, OUTPUT);
-      digitalWrite(g_pin, LOW);
-      digitalWrite(6, LOW);
-      digitalWrite(g_pin, LOW);
-    
-      MsTimer2::set(1000, Timer); // 500ms period
+      MsTimer2::set(1000, Timer); // 1000ms period
       MsTimer2::start();
     }
     
@@ -136,22 +192,21 @@
       {
         if (!PulseMode)
         {
-          analogWrite(g_pin, g_aduty);
+          analogWrite(LEDS_PIN, g_aduty);
           return;
         }
     
         if (LedState)
-        {
-          
+        {          
           //Serial.print("ON ");
           //Serial.println(g_aduty);
-          analogWrite(g_pin, g_aduty);
+          analogWrite(LEDS_PIN, g_aduty);
           //digitalWrite(9, HIGH);
         }
         else
         {
           //Serial.println("OFF");
-          digitalWrite(g_pin, LOW);
+          digitalWrite(LEDS_PIN, LOW);
         }
         LedState = !LedState;
       }
@@ -220,7 +275,7 @@
                 cmdOk = true;
                 break;
 
-              case 10://error / command not found NOK
+              case COMMANDS_COUNT://error / command not found NOK
                 break;
 
             }
@@ -265,7 +320,7 @@
                 cmdOk = true;
                 break;
 
-              case 10://error / command not found NOK
+              case COMMANDS_COUNT://error / command not found NOK
                 break;
             }
             break;
@@ -313,7 +368,7 @@
                 cmdOk = true;
                 break;
 
-              case 10://error / command not found NOK
+              case COMMANDS_COUNT://error / command not found NOK
                 break;
             }
             break;
@@ -364,7 +419,7 @@
                 cmdOk = true;
                 break;
 
-              case 10://error / command not found NOK
+              case COMMANDS_COUNT://error / command not found NOK
                 break;
             }
             break;
@@ -414,7 +469,7 @@
                 cmdOk = true;
                 break;
 
-              case 10://error / command not found NOK
+              case COMMANDS_COUNT://error / command not found NOK
                 break;
             }
             break;
@@ -429,10 +484,10 @@
         case 0:  //All off.
           BIAIsOn = false;
     
-          digitalWrite(g_pin, LOW);
+          digitalWrite(LEDS_PIN, LOW);
     
-          digitalWrite(7, LOW); //Both shutters closed
-          digitalWrite(6, LOW);
+          digitalWrite(SHR_PIN, SHUTTER_LOW); //Both shutters closed
+          digitalWrite(SHB_PIN, SHUTTER_LOW);
 
 //          ReportCompletion(STATUS_BCRC);
           if (!WaitForCompletion(STATUS_BCRC))
@@ -447,8 +502,8 @@
         case 10: //BIA is ON, shutters are closed
           BIAIsOn = true;
     
-          digitalWrite(7, LOW);
-          digitalWrite(6, LOW);
+          digitalWrite(SHR_PIN, SHUTTER_LOW); //Both shutters closed
+          digitalWrite(SHB_PIN, SHUTTER_LOW);
           
           if (!WaitForCompletion(STATUS_BCRC))
           {
@@ -461,10 +516,10 @@
         case 20: //BIA is OFF, shutters are OPEN
     
           BIAIsOn = false;
-          digitalWrite(g_pin, LOW);
+          digitalWrite(LEDS_PIN, LOW);
     
-          digitalWrite(7, HIGH);//OPEN
-          digitalWrite(6, HIGH);//OPEN
+          digitalWrite(SHR_PIN, SHUTTER_HIGH); //Both shutters closed
+          digitalWrite(SHB_PIN, SHUTTER_HIGH);
           
           
           if (!WaitForCompletion(STATUS_BORO))
@@ -477,10 +532,10 @@
     
         case 30:// BIA is OFF, Blue shutter is OPEN Red is CLOSED
           BIAIsOn = false;
-          digitalWrite(g_pin, LOW);
+          digitalWrite(LEDS_PIN, LOW);
     
-          digitalWrite(7, HIGH); //OPEN
-          digitalWrite(6, LOW);  //CLOSED
+          digitalWrite(SHB_PIN, SHUTTER_HIGH); //OPEN
+          digitalWrite(SHR_PIN, SHUTTER_LOW);  //CLOSED
           
 //          ReportCompletion(STATUS_BORC);
           if (!WaitForCompletion(STATUS_BORC))
@@ -493,10 +548,10 @@
     
         case 40://BIA OFF, Red Shutter open, Blue closed
           BIAIsOn = false;
-          digitalWrite(g_pin, LOW);
+          digitalWrite(LEDS_PIN, LOW);
     
-          digitalWrite(7, LOW); //CLOSED
-          digitalWrite(6, HIGH);  //OPEN
+          digitalWrite(SHB_PIN, SHUTTER_LOW); //CLOSED
+          digitalWrite(SHR_PIN, SHUTTER_HIGH);  //OPEN
           
 //          ReportCompletion(STATUS_BCRO);
           if (!WaitForCompletion(STATUS_BCRO))
@@ -529,12 +584,13 @@
     int UpdateStatusWord()
     {
        ///// LECTURE EFFECTIVE DES STATUS SUR PORT IO ARDUINO //
-      shb_open_status = digitalRead(3);       // BS ouvert//
-      shb_close_status = digitalRead(4); // BS ferme //
-      shb_err_status = digitalRead(2); // BS error //
-      shr_open_status = digitalRead(8); // RS ouvert //
-      shr_close_status = digitalRead(5);  // RS fermé //
-      shr_err_status = digitalRead(1);  //RS error //
+      shb_open_status = digitalRead(SHB_OPEN_PIN);       // BS ouvert//
+      shb_close_status = digitalRead(SHB_CLOSE_PIN); // BS ferme //
+      shb_err_status = digitalRead(SHB_ERROR_PIN); // BS error //
+      shr_open_status = digitalRead(SHR_OPEN_PIN); // RS ouvert //
+      shr_close_status = digitalRead(SHR_CLOSE_PIN);  // RS fermé //
+      shr_err_status = digitalRead(SHR_ERROR_PIN);  //RS error //
+
 
       StatWord = (1<<6)+
                  (!(shb_open_status)<<5)+
@@ -544,6 +600,15 @@
                  (!(shr_close_status)<<1)+
                  (!shr_err_status);
    
+   /*
+       StatWord = (1<<6)+
+                 ((shb_open_status)<<5)+
+                 ((shb_close_status)<<4)+
+                 ((shb_err_status)<<3)+
+                 ((shr_open_status)<<2)+
+                 ((shr_close_status)<<1)+
+                 (shr_err_status);
+  */
       return StatWord;
     }
     
@@ -567,8 +632,6 @@
       
       return (v == val);
     }
-    
-  
     
     
     void Command(EthernetClient g_client, String mycommand)
@@ -620,8 +683,8 @@
           g_aperiod = v;
           SetPeriod(v);
         } //v is in ms
-    
-        Serial.println(g_aperiod);
+
+        g_client.print(g_aperiod);
         cmdOk = true;
       }
     
@@ -635,8 +698,8 @@
         {
           g_aduty = v;
         }
-    
-        Serial.println(g_aduty);
+
+        g_client.print(g_aduty);
         cmdOk = true;
       }
     
@@ -659,7 +722,7 @@
         g_client.print(g_aperiod);
         g_client.print(',');
         g_client.print(g_aduty);
-        cmdOk= true;
+        cmdOk = true;
       } 
       
 
@@ -674,6 +737,19 @@
         } //v is in ms
         
         Serial.println(ShutterMotionTimeout);
+        cmdOk = true;
+      }
+
+      if (CheckCommand(mycommand, "read_phr"))
+      {
+        int phr0, phr1;
+        phr0 = analogRead(PHR0_INPUT_PIN);
+        phr1 = analogRead(PHR1_INPUT_PIN);
+
+        g_client.print(phr0);
+        g_client.print(',');
+        g_client.print(phr1);
+
         cmdOk = true;
       }
     
