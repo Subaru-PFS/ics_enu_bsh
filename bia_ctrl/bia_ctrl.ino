@@ -1,6 +1,6 @@
 
 #include <SPI.h>
-#include <Ethernet2.h>
+#include <Ethernet.h>
 
 #include <MsTimer2.h>
 
@@ -130,6 +130,12 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
       if (Ethernet.begin(mac) == 0) 
       {
         Serial.println("Failed to configure Ethernet using DHCP");
+
+        if (Ethernet.hardwareStatus() == EthernetNoHardware) {
+          Serial.println("Ethernet shield was not found.  Sorry, can't run without hardware. ");}
+           
+        else if (Ethernet.linkStatus() == LinkOFF) {
+          Serial.println("Ethernet cable is not connected.");}
         // no point in carrying on, so do nothing forevermore:
         for (;;);
       }
@@ -787,6 +793,21 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     
     void loop() {
+      switch (Ethernet.maintain()) {
+        case 1: Serial.println("Error: DHCP renewed fail. ");
+                break;
+        case 2: Serial.println("DHCP renewed success:");
+                Serial.println(Ethernet.localIP());
+                break;
+        case 3: Serial.println("Error: DHCP rebind fail. ");
+                break;
+        case 4: Serial.println("DHCP rebind success:");
+                Serial.println(Ethernet.localIP());
+                break;
+        default://nothing happened
+                break;
+      }
+      
       //  Serial.println("Waiting...");
       EthernetClient g_client = g_server.available();
       if (g_client)
