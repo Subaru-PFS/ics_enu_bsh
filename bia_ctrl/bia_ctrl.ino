@@ -93,6 +93,11 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
     
     // telnet defaults to port 23
     EthernetServer g_server(23);
+
+    String commandBuffer;
+    String commandStr;
+    String EOL = "\r\n";
+    int index;
         
     // BIA Controller MODES
     int bia_mode;
@@ -125,7 +130,7 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
     void setup()
     {
       Serial.begin(9600);      
-      Serial.println("BIADuino v2.1");
+      Serial.println("BIADuino v2.2");
     
       if (Ethernet.begin(mac) == 0) 
       {
@@ -812,27 +817,27 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
       EthernetClient g_client = g_server.available();
       if (g_client)
       {
-        int taille = g_client.available();
-    
-        if (taille > 100)
-          taille = 100;
-    
-        char data[taille + 1];
-        int i = 0;
-    
-        while (i < taille)
-        {
-          char c = g_client.read();
-          if (c !=  - 1)
-          {
-            data[i] = c;
-            i++;
+        //Serial.println("client connected...");
+        commandBuffer="";
+        while (g_client.connected()) {
+       
+            while (g_client.available())
+            {
+              char c = g_client.read();
+              if (c !=  - 1)
+              {
+                commandBuffer += c;
+              }
+            }
+            index = commandBuffer.indexOf(EOL);
+            if (index != -1){
+              commandStr = commandBuffer.substring(0, index);
+              Command(g_client, commandStr);
+              commandBuffer = commandBuffer.substring(index + EOL.length());
+              }
+              delay(10);
           }
+          //Serial.println("client disconnected...");
         }
-        data[i] = '\0';
-        String mystring = (String)data;
-        Command(g_client, mystring);
-      }
-    
-      delay(10);
+      
     }
