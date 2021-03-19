@@ -23,10 +23,10 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
 
     
     //Uncomment the line below depending on the BSH
-    #define ENU1
+    //#define ENU1
     //#define ENU2
     //#define ENU3
-    //#define ENU4    
+    #define ENU4
     
     //#define ENU5
     //#define ENU6
@@ -76,7 +76,7 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
     
       // INPUT PINS DEFAULT
       #define SHB_OPEN_PIN    3
-      #define SHB_CLOSE_PIN   4
+      #define SHB_CLOSE_PIN   A2
       #define SHB_ERROR_PIN   2
       #define SHR_OPEN_PIN    8
       #define SHR_CLOSE_PIN   5
