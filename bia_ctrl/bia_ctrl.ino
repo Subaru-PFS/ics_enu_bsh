@@ -1,6 +1,7 @@
 
 #include <SPI.h>
 #include <Ethernet.h>
+#include <CircularBuffer.h>
 
 #include <MsTimer2.h>
 
@@ -94,10 +95,10 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
     // telnet defaults to port 23
     EthernetServer g_server(23);
 
-    String commandBuffer;
-    String commandStr;
-    String EOL = "\r\n";
-    int index;
+    CircularBuffer<char, 100> commandBuffer;
+    int bufferSize;
+    char commandStr[100];
+    char EOL[] = "\r\n";
         
     // BIA Controller MODES
     int bia_mode;
@@ -818,24 +819,36 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
       if (g_client)
       {
         //Serial.println("client connected...");
-        commandBuffer="";
+        commandBuffer.clear();
+        commandStr[0]='\0';
         while (g_client.connected()) {
-       
-            while (g_client.available())
-            {
+          if (g_client.available()){
+            while(g_client.available()){
               char c = g_client.read();
-              if (c !=  - 1)
-              {
-                commandBuffer += c;
-              }
+                if (c !=  - 1){
+                  commandBuffer.unshift(c);
+                }  
             }
-            index = commandBuffer.indexOf(EOL);
-            if (index != -1){
-              commandStr = commandBuffer.substring(0, index);
+            bufferSize = commandBuffer.size();
+            
+            for (int i=0;i<bufferSize;i++){
+              commandStr[i] = commandBuffer[bufferSize-1-i];
+            }
+            commandStr[bufferSize]= '\0';
+
+            char *ptr = strstr(commandStr, EOL);
+  
+            if (ptr != NULL) {
+              strtok(commandStr, EOL);
+
               Command(g_client, commandStr);
-              commandBuffer = commandBuffer.substring(index + EOL.length());
-              }
-              delay(10);
+              
+              commandBuffer.clear();
+              commandStr[0]='\0';
+            }
+            
+          }
+          delay(10);
           }
           //Serial.println("client disconnected...");
         }
