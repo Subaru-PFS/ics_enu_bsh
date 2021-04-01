@@ -26,8 +26,8 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
     //Uncomment the line below depending on the BSH
     //#define ENU1
     //#define ENU2
-    #define ENU3
-    //#define ENU4
+    //#define ENU3
+    #define ENU4
     
     //#define ENU5
     //#define ENU6
@@ -821,24 +821,30 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
         //Serial.println("client connected...");
         commandBuffer.clear();
         commandStr[0]='\0';
-        while (g_client.connected()) {
-          if (g_client.available()){
-            while(g_client.available()){
+        while (g_client.connected()) 
+        {
+          if (g_client.available())
+          {
+            while(g_client.available())
+            {
               char c = g_client.read();
-                if (c !=  - 1){
+                if (c !=  - 1)
+                {
                   commandBuffer.unshift(c);
                 }  
             }
             bufferSize = commandBuffer.size();
             
-            for (int i=0;i<bufferSize;i++){
+            for (int i=0;i<bufferSize;i++)
+            {
               commandStr[i] = commandBuffer[bufferSize-1-i];
             }
             commandStr[bufferSize]= '\0';
 
             char *ptr = strstr(commandStr, EOL);
   
-            if (ptr != NULL) {
+            if (ptr != NULL) 
+            {
               strtok(commandStr, EOL);
 
               Command(g_client, commandStr);
@@ -849,8 +855,8 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
             
           }
           delay(10);
-          }
-          //Serial.println("client disconnected...");
         }
-      
+        //Serial.println("client disconnected...");
+      }
+
     }
