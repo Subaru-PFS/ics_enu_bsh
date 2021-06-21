@@ -1,6 +1,7 @@
 
 #include <SPI.h>
-#include <Ethernet2.h>
+#include <Ethernet.h>
+#include <CircularBuffer.h>
 
 #include <MsTimer2.h>
 
@@ -23,10 +24,10 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
 
     
     //Uncomment the line below depending on the BSH
-    #define ENU1
+    //#define ENU1
     //#define ENU2
     //#define ENU3
-    //#define ENU4    
+    #define ENU4
     
     //#define ENU5
     //#define ENU6
@@ -76,7 +77,7 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
     
       // INPUT PINS DEFAULT
       #define SHB_OPEN_PIN    3
-      #define SHB_CLOSE_PIN   4
+      #define SHB_CLOSE_PIN   A4
       #define SHB_ERROR_PIN   2
       #define SHR_OPEN_PIN    8
       #define SHR_CLOSE_PIN   5
@@ -93,6 +94,11 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
     
     // telnet defaults to port 23
     EthernetServer g_server(23);
+
+    CircularBuffer<char, 100> commandBuffer;
+    int bufferSize;
+    char commandStr[100];
+    char EOL[] = "\r\n";
         
     // BIA Controller MODES
     int bia_mode;
@@ -125,11 +131,17 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
     void setup()
     {
       Serial.begin(9600);      
-      Serial.println("BIADuino v2.1");
+      Serial.println("BIADuino v2.2");
     
       if (Ethernet.begin(mac) == 0) 
       {
         Serial.println("Failed to configure Ethernet using DHCP");
+
+        if (Ethernet.hardwareStatus() == EthernetNoHardware) {
+          Serial.println("Ethernet shield was not found.  Sorry, can't run without hardware. ");}
+           
+        else if (Ethernet.linkStatus() == LinkOFF) {
+          Serial.println("Ethernet cable is not connected.");}
         // no point in carrying on, so do nothing forevermore:
         for (;;);
       }
@@ -787,31 +799,64 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     
     void loop() {
+      switch (Ethernet.maintain()) {
+        case 1: Serial.println("Error: DHCP renewed fail. ");
+                break;
+        case 2: Serial.println("DHCP renewed success:");
+                Serial.println(Ethernet.localIP());
+                break;
+        case 3: Serial.println("Error: DHCP rebind fail. ");
+                break;
+        case 4: Serial.println("DHCP rebind success:");
+                Serial.println(Ethernet.localIP());
+                break;
+        default://nothing happened
+                break;
+      }
+      
       //  Serial.println("Waiting...");
       EthernetClient g_client = g_server.available();
       if (g_client)
       {
-        int taille = g_client.available();
-    
-        if (taille > 100)
-          taille = 100;
-    
-        char data[taille + 1];
-        int i = 0;
-    
-        while (i < taille)
+        //Serial.println("client connected...");
+        commandBuffer.clear();
+        commandStr[0]='\0';
+        while (g_client.connected()) 
         {
-          char c = g_client.read();
-          if (c !=  - 1)
+          if (g_client.available())
           {
-            data[i] = c;
-            i++;
+            while(g_client.available())
+            {
+              char c = g_client.read();
+                if (c !=  - 1)
+                {
+                  commandBuffer.unshift(c);
+                }  
+            }
+            bufferSize = commandBuffer.size();
+            
+            for (int i=0;i<bufferSize;i++)
+            {
+              commandStr[i] = commandBuffer[bufferSize-1-i];
+            }
+            commandStr[bufferSize]= '\0';
+
+            char *ptr = strstr(commandStr, EOL);
+  
+            if (ptr != NULL) 
+            {
+              strtok(commandStr, EOL);
+
+              Command(g_client, commandStr);
+              
+              commandBuffer.clear();
+              commandStr[0]='\0';
+            }
+            
           }
+          delay(10);
         }
-        data[i] = '\0';
-        String mystring = (String)data;
-        Command(g_client, mystring);
+        //Serial.println("client disconnected...");
       }
-    
-      delay(10);
+
     }
