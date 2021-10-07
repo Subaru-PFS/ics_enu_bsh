@@ -687,7 +687,7 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
       long v;
       if (CheckCommand(mycommand, "set_period"))
       {
-        int mylen = mycommand.length() - 2;
+        int mylen = mycommand.length();
         String inter = mycommand.substring(10, mylen);
     
         v = (long)inter.toInt();
@@ -702,7 +702,7 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
     
       if (CheckCommand(mycommand, "set_duty"))
       {
-        int mylen = mycommand.length() - 2;
+        int mylen = mycommand.length();
         String inter = mycommand.substring(8, mylen);
     
         v = inter.toInt();
@@ -740,7 +740,7 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
 
       if (CheckCommand(mycommand, "set_timeout"))
       {
-        int mylen = mycommand.length() - 2;
+        int mylen = mycommand.length();
         String inter = mycommand.substring(10, mylen);
     
         v = (long)inter.toInt();
