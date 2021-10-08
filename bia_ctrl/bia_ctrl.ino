@@ -105,7 +105,7 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
     bool BIAIsOn;
     
     int g_pin; // bia pin#
-    long g_aduty; // duty
+    long g_apower; // duty
     long g_aperiod; // period
     
     boolean shb_open_status;
@@ -162,7 +162,7 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
       #define SHUTTER_HIGH LOW
     
       //////////////////////////////////// PARAM BIA /////////////////////////////////////////
-      g_aduty = 0; // 0% duty
+      g_apower = 0; // 0% duty
       g_aperiod = 100; // 100000 = 100ms 1000 = 1ms
       g_pin = LEDS_PIN;
       BIAIsOn = false;
@@ -204,15 +204,15 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
       {
         if (!PulseMode)
         {
-          analogWrite(LEDS_PIN, g_aduty);
+          analogWrite(LEDS_PIN, g_apower);
           return;
         }
     
         if (LedState)
         {          
           //Serial.print("ON ");
-          //Serial.println(g_aduty);
-          analogWrite(LEDS_PIN, g_aduty);
+          //Serial.println(g_apower);
+          analogWrite(LEDS_PIN, g_apower);
           //digitalWrite(9, HIGH);
         }
         else
@@ -700,7 +700,7 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
         cmdOk = true;
       }
     
-      if (CheckCommand(mycommand, "set_duty"))
+      if (CheckCommand(mycommand, "set_power"))
       {
         int mylen = mycommand.length();
         String inter = mycommand.substring(8, mylen);
@@ -708,10 +708,10 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
         v = inter.toInt();
         if ((v > 0) && (v < 256))
         {
-          g_aduty = v;
+          g_apower = v;
         }
 
-        g_client.print(g_aduty);
+        g_client.print(g_apower);
         cmdOk = true;
       }
     
@@ -721,9 +721,9 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
         cmdOk = true;
       }
     
-      if (CheckCommand(mycommand, "get_duty"))
+      if (CheckCommand(mycommand, "get_power"))
       {
-        g_client.print(g_aduty);
+        g_client.print(g_apower);
         cmdOk = true;
       }
 
@@ -733,7 +733,7 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
         g_client.print(',');
         g_client.print(g_aperiod);
         g_client.print(',');
-        g_client.print(g_aduty);
+        g_client.print(g_apower);
         cmdOk = true;
       } 
       
