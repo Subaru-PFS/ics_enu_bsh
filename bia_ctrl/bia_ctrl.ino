@@ -103,10 +103,20 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
     // BIA Controller MODES
     int bia_mode;
     bool BIAIsOn;
-    
-    int g_pin; // bia pin#
+    bool ledState;
+    bool currentState;
+
+    const unsigned int scaling = 100;
+    unsigned int divFactor;
+    unsigned int maxOnIter;
+    unsigned int cycleIter;
+
     long g_aduty; // duty
     long g_aperiod; // period
+    long g_apower; // power
+
+    long g_sduty; // saved duty
+    long g_speriod; // saved period
     
     boolean shb_open_status;
     boolean shb_close_status;
@@ -114,9 +124,6 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
     boolean shr_open_status;
     boolean shr_close_status;
     boolean shr_err_status;
-    
-    bool LedState;
-    bool PulseMode;
     
     #define STATUS_BCRC        0x52 //Both shutters closed no error
     #define STATUS_BCRO        0x54 //Blue CLOSED Red OPEN no error
@@ -150,9 +157,7 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
     
       Serial.println(Ethernet.localIP());
       delay(1000);
-    
-      LedState = false;
-      PulseMode = false;
+
     
       // Set BIA :ode to IDLE
       bia_mode = 0;
@@ -162,12 +167,20 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
       #define SHUTTER_HIGH LOW
     
       //////////////////////////////////// PARAM BIA /////////////////////////////////////////
-      g_aduty = 0; // 0% duty
-      g_aperiod = 100; // 100000 = 100ms 1000 = 1ms
-      g_pin = LEDS_PIN;
+      cycleIter = 0;
+      divFactor = 1;
+      maxOnIter = 1;
+      g_apower = 0; // 0% power
+      g_aduty = 100;
+      g_aperiod = 1000;
+
+      g_sduty = g_aduty;
+      g_speriod = g_aperiod;
+
       BIAIsOn = false;
-    
-    
+      ledState = false;
+      currentState = false;
+
       //////////////////////////////////// PIN IO MODES ////////////////////////////////////////            
       //Shutter status pins on Bonn side are optocouplers so pullup is needed (was cabled on first hardware)
       
@@ -193,7 +206,7 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
       digitalWrite(SHR_PIN, SHUTTER_LOW);     
       digitalWrite(SHB_PIN, SHUTTER_LOW);     
     
-      MsTimer2::set(1000, Timer); // 1000ms period
+      MsTimer2::set(g_aperiod, Timer); // 1000ms period
       MsTimer2::start();
     }
     
@@ -202,27 +215,47 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
     { //timer1 interrupt 1Hz
       if (BIAIsOn)
       {
-        if (!PulseMode)
-        {
-          analogWrite(LEDS_PIN, g_aduty);
-          return;
-        }
-    
-        if (LedState)
-        {          
-          //Serial.print("ON ");
-          //Serial.println(g_aduty);
-          analogWrite(LEDS_PIN, g_aduty);
-          //digitalWrite(9, HIGH);
-        }
-        else
-        {
-          //Serial.println("OFF");
-          digitalWrite(LEDS_PIN, LOW);
-        }
-        LedState = !LedState;
+        ledState = cycleIter < maxOnIter;
+        if (ledState!=currentState){
+          if (ledState) {
+            analogWrite(LEDS_PIN, g_apower);}
+          else {
+            analogWrite(LEDS_PIN, LOW);}
+
+          currentState = ledState;}
+
+      cycleIter++;
+      if (cycleIter>=divFactor)
+        cycleIter = 0;
       }
     }
+
+    
+    int CalcGCD(long a, long b) {
+      if (b == 0){
+        return a;}
+      else {
+        return CalcGCD(b, a % b);}
+    }
+
+    bool CheckBiaParameters(long duty, long period)
+    {
+      if ((duty < 0) || (duty > 100))
+        return false;
+
+      long gcd = CalcGCD(scaling, duty);
+      if (period<(scaling/gcd))
+        return false;
+
+      divFactor = scaling / gcd;
+      maxOnIter = duty / gcd;
+      g_aduty = duty;
+      g_aperiod = period;
+      SetPeriod(period/divFactor);
+      return true;
+
+    }
+
     
     int CommandCode(String comm)
     {
@@ -672,45 +705,65 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
     
       if (CheckCommand(mycommand, "pulse_on"))
       {
-        PulseMode = true;
+        CheckBiaParameters(g_sduty, g_speriod);
         cmdOk = true;
       }
     
       if (CheckCommand(mycommand, "pulse_off"))
       {
-        PulseMode = false;
+        g_sduty = g_aduty;
+        g_speriod = g_aperiod;
+        CheckBiaParameters(100, 1000);
         cmdOk = true;
       }
     
     
       ///////////////////////////////////// PROGRAMMATION DU TEMPS DE CYCLE TIMER PWM BIA /////////////////////////////////////////
       long v;
+
+      if (CheckCommand(mycommand, "set_duty"))
+      {
+        int mylen = mycommand.length();
+        String inter = mycommand.substring(8, mylen);
+
+        v = (long)inter.toInt();
+
+        if (CheckBiaParameters(v, g_aperiod)){
+          g_sduty = v;
+          g_client.print(g_sduty);
+          cmdOk = true;
+        }
+      }
+
       if (CheckCommand(mycommand, "set_period"))
       {
         int mylen = mycommand.length();
         String inter = mycommand.substring(10, mylen);
     
         v = (long)inter.toInt();
-        if ((v > 0) && (v < 65536)) {
-          g_aperiod = v;
-          SetPeriod(v);
-        } //v is in ms
-
-        g_client.print(g_aperiod);
-        cmdOk = true;
+        if (CheckBiaParameters(g_aduty, v)){
+          g_speriod = v;
+          g_client.print(g_speriod);
+          cmdOk = true;
+        }
       }
     
-      if (CheckCommand(mycommand, "set_duty"))
+      if (CheckCommand(mycommand, "set_power"))
       {
         int mylen = mycommand.length();
-        String inter = mycommand.substring(8, mylen);
+        String inter = mycommand.substring(9, mylen);
     
         v = inter.toInt();
         if ((v > 0) && (v < 256))
         {
-          g_aduty = v;
+          g_apower = v;
         }
 
+        g_client.print(g_apower);
+        cmdOk = true;
+      }
+      if (CheckCommand(mycommand, "get_duty"))
+      {
         g_client.print(g_aduty);
         cmdOk = true;
       }
@@ -721,19 +774,19 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
         cmdOk = true;
       }
     
-      if (CheckCommand(mycommand, "get_duty"))
+      if (CheckCommand(mycommand, "get_power"))
       {
-        g_client.print(g_aduty);
+        g_client.print(g_apower);
         cmdOk = true;
       }
 
       if (CheckCommand(mycommand, "get_param"))
       {
-        g_client.print(PulseMode);
+        g_client.print(g_aduty);
         g_client.print(',');
         g_client.print(g_aperiod);
         g_client.print(',');
-        g_client.print(g_aduty);
+        g_client.print(g_apower);
         cmdOk = true;
       } 
       
