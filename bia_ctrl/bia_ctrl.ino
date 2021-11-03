@@ -238,7 +238,7 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
         return CalcGCD(b, a % b);}
     }
 
-    bool CheckBiaParameters(long duty, long period)
+    bool SetBiaParameters(long duty, long period)
     {
       if ((duty < 0) || (duty > 100))
         return false;
@@ -705,7 +705,7 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
     
       if (CheckCommand(mycommand, "pulse_on"))
       {
-        CheckBiaParameters(g_sduty, g_speriod);
+        SetBiaParameters(g_sduty, g_speriod);
         cmdOk = true;
       }
     
@@ -713,7 +713,7 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
       {
         g_sduty = g_aduty;
         g_speriod = g_aperiod;
-        CheckBiaParameters(100, 1000);
+        SetBiaParameters(100, 1000);
         cmdOk = true;
       }
     
@@ -728,7 +728,7 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
 
         v = (long)inter.toInt();
 
-        if (CheckBiaParameters(v, g_aperiod)){
+        if (SetBiaParameters(v, g_aperiod)){
           g_sduty = v;
           g_client.print(g_sduty);
           cmdOk = true;
@@ -741,7 +741,7 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
         String inter = mycommand.substring(10, mylen);
     
         v = (long)inter.toInt();
-        if (CheckBiaParameters(g_aduty, v)){
+        if (SetBiaParameters(g_aduty, v)){
           g_speriod = v;
           g_client.print(g_speriod);
           cmdOk = true;
