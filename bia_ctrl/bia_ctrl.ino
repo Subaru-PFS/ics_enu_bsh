@@ -253,8 +253,7 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
       maxOnIter = duty / gcd;
       g_aduty = duty;
       g_aperiod = period;
-      g_sduty = g_aduty;
-      g_speriod = g_aperiod;
+
       SetPeriod(period/divFactor);
       return true;
 
@@ -732,7 +731,7 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
 
         v = (long)inter.toInt();
 
-        if (SetBiaParameters(v, g_aperiod)){
+        if (SetBiaParameters(v, g_speriod)){
           g_sduty = v;
           g_client.print(g_sduty);
           cmdOk = true;
@@ -745,7 +744,7 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
         String inter = mycommand.substring(10, mylen);
     
         v = (long)inter.toInt();
-        if (SetBiaParameters(g_aduty, v)){
+        if (SetBiaParameters(g_sduty, v)){
           g_speriod = v;
           g_client.print(g_speriod);
           cmdOk = true;
