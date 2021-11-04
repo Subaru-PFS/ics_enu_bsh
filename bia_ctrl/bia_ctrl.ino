@@ -251,6 +251,8 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
       maxOnIter = duty / gcd;
       g_aduty = duty;
       g_aperiod = period;
+      g_sduty = g_aduty;
+      g_speriod = g_aperiod;
       SetPeriod(period/divFactor);
       return true;
 
@@ -711,9 +713,9 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
     
       if (CheckCommand(mycommand, "pulse_off"))
       {
-        g_sduty = g_aduty;
-        g_speriod = g_aperiod;
-        SetBiaParameters(100, 1000);
+        g_aduty = 100;
+        g_aperiod = 1000;
+        SetPeriod(g_aperiod);
         cmdOk = true;
       }
     
