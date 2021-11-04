@@ -107,6 +107,8 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
     bool currentState;
 
     const unsigned int scaling = 100;
+    const long noStrobeDuty = 100;
+    const long noStrobePeriod = 1000;
     unsigned int divFactor;
     unsigned int maxOnIter;
     unsigned int cycleIter;
@@ -171,8 +173,8 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
       divFactor = 1;
       maxOnIter = 1;
       g_apower = 0; // 0% power
-      g_aduty = 100;
-      g_aperiod = 1000;
+      g_aduty = noStrobeDuty;
+      g_aperiod = noStrobePeriod;
 
       g_sduty = g_aduty;
       g_speriod = g_aperiod;
@@ -713,8 +715,8 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
     
       if (CheckCommand(mycommand, "pulse_off"))
       {
-        g_aduty = 100;
-        g_aperiod = 1000;
+        g_aduty = noStrobeDuty;
+        g_aperiod = noStrobePeriod;
         SetPeriod(g_aperiod);
         cmdOk = true;
       }
