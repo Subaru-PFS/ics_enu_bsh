@@ -219,16 +219,11 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
       {
         ledState = cycleIter < maxOnIter;
         if (ledState!=currentState){
-          if (ledState) {
-            analogWrite(LEDS_PIN, g_apower);}
-          else {
-            analogWrite(LEDS_PIN, LOW);}
+          switchBiaLED(ledState);}
 
-          currentState = ledState;}
-
-      cycleIter++;
-      if (cycleIter>=divFactor)
-        cycleIter = 0;
+        cycleIter++;
+        if (cycleIter>=divFactor)
+          cycleIter = 0;
       }
     }
 
@@ -257,6 +252,16 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
       SetPeriod(period/divFactor);
       return true;
 
+    }
+
+    void switchBiaLED(bool reqState)
+    {
+      if (reqState) {
+        analogWrite(LEDS_PIN, g_apower);}
+      else {
+        digitalWrite(LEDS_PIN, LOW);}
+
+      currentState = reqState;
     }
 
     
@@ -531,8 +536,7 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
       { //Actions upon state
         case 0:  //All off.
           BIAIsOn = false;
-    
-          digitalWrite(LEDS_PIN, LOW);
+          switchBiaLED(BIAIsOn);
     
           digitalWrite(SHR_PIN, SHUTTER_LOW); //Both shutters closed
           digitalWrite(SHB_PIN, SHUTTER_LOW);
@@ -562,9 +566,8 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
           break;
         // //////////////////////////////////////////////////////////////////ACTIONS DU MODE BIA//
         case 20: //BIA is OFF, shutters are OPEN
-    
           BIAIsOn = false;
-          digitalWrite(LEDS_PIN, LOW);
+          switchBiaLED(BIAIsOn);
     
           digitalWrite(SHR_PIN, SHUTTER_HIGH); //Both shutters closed
           digitalWrite(SHB_PIN, SHUTTER_HIGH);
@@ -580,7 +583,7 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
     
         case 30:// BIA is OFF, Blue shutter is OPEN Red is CLOSED
           BIAIsOn = false;
-          digitalWrite(LEDS_PIN, LOW);
+          switchBiaLED(BIAIsOn);
     
           digitalWrite(SHB_PIN, SHUTTER_HIGH); //OPEN
           digitalWrite(SHR_PIN, SHUTTER_LOW);  //CLOSED
@@ -596,7 +599,7 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
     
         case 40://BIA OFF, Red Shutter open, Blue closed
           BIAIsOn = false;
-          digitalWrite(LEDS_PIN, LOW);
+          switchBiaLED(BIAIsOn);
     
           digitalWrite(SHB_PIN, SHUTTER_LOW); //CLOSED
           digitalWrite(SHR_PIN, SHUTTER_HIGH);  //OPEN
@@ -717,8 +720,8 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
         SetBiaParameters(noStrobeDuty, noStrobePeriod);
         cmdOk = true;
       }
-    
-    
+
+
       ///////////////////////////////////// PROGRAMMATION DU TEMPS DE CYCLE TIMER PWM BIA /////////////////////////////////////////
       long v;
 
