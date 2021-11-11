@@ -714,9 +714,7 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
     
       if (CheckCommand(mycommand, "pulse_off"))
       {
-        g_aduty = noStrobeDuty;
-        g_aperiod = noStrobePeriod;
-        SetPeriod(g_aperiod);
+        SetBiaParameters(noStrobeDuty, noStrobePeriod);
         cmdOk = true;
       }
     
