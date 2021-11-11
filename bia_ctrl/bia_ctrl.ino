@@ -140,7 +140,7 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
     void setup()
     {
       Serial.begin(9600);      
-      Serial.println("BIADuino v2.2");
+      Serial.println("BIADuino 0.1.2");
     
       if (Ethernet.begin(mac) == 0) 
       {
