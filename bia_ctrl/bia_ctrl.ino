@@ -761,6 +761,7 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
         if ((v > 0) && (v < 256))
         {
           g_apower = v;
+          switchBiaLED(BIAIsOn);
         }
 
         g_client.print(g_apower);
