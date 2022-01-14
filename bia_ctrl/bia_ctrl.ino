@@ -695,7 +695,7 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
       bool cmdOk;
       cmdOk = StatusEvolve(cmd, g_client);
           
-      // Controller status command parsing    
+      // Controller status, parameters parsing    
       
       if (CheckCommand(mycommand, "statword"))
       {
@@ -708,65 +708,7 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
         g_client.print(bia_mode);
         cmdOk = true;
       }
-    
-      if (CheckCommand(mycommand, "pulse_on"))
-      {
-        SetBiaParameters(g_sduty, g_speriod);
-        cmdOk = true;
-      }
-    
-      if (CheckCommand(mycommand, "pulse_off"))
-      {
-        SetBiaParameters(noStrobeDuty, noStrobePeriod);
-        cmdOk = true;
-      }
 
-
-      ///////////////////////////////////// PROGRAMMATION DU TEMPS DE CYCLE TIMER PWM BIA /////////////////////////////////////////
-      long v;
-
-      if (CheckCommand(mycommand, "set_duty"))
-      {
-        int mylen = mycommand.length();
-        String inter = mycommand.substring(8, mylen);
-
-        v = (long)inter.toInt();
-
-        if (SetBiaParameters(v, g_speriod)){
-          g_sduty = v;
-          g_client.print(g_sduty);
-          cmdOk = true;
-        }
-      }
-
-      if (CheckCommand(mycommand, "set_period"))
-      {
-        int mylen = mycommand.length();
-        String inter = mycommand.substring(10, mylen);
-    
-        v = (long)inter.toInt();
-        if (SetBiaParameters(g_sduty, v)){
-          g_speriod = v;
-          g_client.print(g_speriod);
-          cmdOk = true;
-        }
-      }
-    
-      if (CheckCommand(mycommand, "set_power"))
-      {
-        int mylen = mycommand.length();
-        String inter = mycommand.substring(9, mylen);
-    
-        v = inter.toInt();
-        if ((v > 0) && (v < 256))
-        {
-          g_apower = v;
-          switchBiaLED(BIAIsOn);
-        }
-
-        g_client.print(g_apower);
-        cmdOk = true;
-      }
       if (CheckCommand(mycommand, "get_duty"))
       {
         g_client.print(g_aduty);
@@ -793,23 +735,8 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
         g_client.print(',');
         g_client.print(g_apower);
         cmdOk = true;
-      } 
-      
-
-      if (CheckCommand(mycommand, "set_timeout"))
-      {
-        int mylen = mycommand.length();
-        String inter = mycommand.substring(10, mylen);
-    
-        v = (long)inter.toInt();
-        if ((v > 0) && (v < 65536)) {
-          ShutterMotionTimeout = v;
-        } //v is in ms
-        
-        Serial.println(ShutterMotionTimeout);
-        cmdOk = true;
       }
-
+       
       if (CheckCommand(mycommand, "read_phr"))
       {
         int phr0, phr1;
@@ -821,6 +748,84 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
         g_client.print(phr1);
 
         cmdOk = true;
+      }
+      
+      /// (DE)ACTIVATE BIA STROBING MODE ///
+    
+      if (CheckCommand(mycommand, "pulse_on"))
+      {
+        SetBiaParameters(g_sduty, g_speriod);
+        cmdOk = true;
+      }
+    
+      if (CheckCommand(mycommand, "pulse_off"))
+      {
+        SetBiaParameters(noStrobeDuty, noStrobePeriod);
+        cmdOk = true;
+      }
+
+
+      /// SET NEW BIA PARAMETERS ///
+      
+      long v;
+
+      if (CheckCommand(mycommand, "set_duty"))
+      {
+        int mylen = mycommand.length();
+        String inter = mycommand.substring(8, mylen);
+
+        v = (long)inter.toInt();
+
+        if (SetBiaParameters(v, g_speriod)){
+          g_sduty = v;
+          g_client.print(g_sduty);
+          cmdOk = true;
+        }
+      }
+
+      if (CheckCommand(mycommand, "set_period"))
+      {
+        int mylen = mycommand.length();
+        String inter = mycommand.substring(10, mylen);
+    
+        v = (long)inter.toInt();
+      
+        if (SetBiaParameters(g_sduty, v)){
+          g_speriod = v;
+          g_client.print(g_speriod);
+          cmdOk = true;
+        }
+      }
+    
+      if (CheckCommand(mycommand, "set_power"))
+      {
+        int mylen = mycommand.length();
+        String inter = mycommand.substring(9, mylen);
+    
+        v = (long)inter.toInt();
+      
+        if ((v > 0) && (v < 256)){
+          g_apower = v;
+          switchBiaLED(BIAIsOn);
+          g_client.print(g_apower);
+          cmdOk = true;
+        }
+      }
+
+      /// SET NEW SHUTTERS PARAMETERS ///
+
+      if (CheckCommand(mycommand, "set_shutter_timeout"))
+      {
+        int mylen = mycommand.length();
+        String inter = mycommand.substring(19, mylen);
+    
+        v = (long)inter.toInt();
+        
+        if ((v > 0) && (v < 65536)) {
+          ShutterMotionTimeout = v; //v is in ms
+          g_client.print(ShutterMotionTimeout);
+          cmdOk = true;
+        }
       }
     
     
