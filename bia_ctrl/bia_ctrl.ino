@@ -105,6 +105,13 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
     bool ledState;
     bool currentState;
 
+    // Exposure variables
+    bool doExposure;
+    unsigned long openStartedAt;
+    unsigned long fullyOpenAt;
+    unsigned long closeStartedAt;
+    unsigned long fullyClosedAt;
+
     const unsigned int scaling = 100;
     const unsigned int noStrobeDuty = 100;
     const unsigned int noStrobePeriod = 1000;
@@ -182,6 +189,13 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
       BIAIsOn = false;
       ledState = false;
       currentState = false;
+
+      //////////////////////////////////// PARAM EXPOSURE //////////////////////////////////////
+      doExposure = false;
+      openStartedAt = 0;
+      fullyOpenAt = 0;
+      closeStartedAt = 0;
+      fullyClosedAt = 0;
 
       //////////////////////////////////// PIN IO MODES ////////////////////////////////////////            
       //Shutter status pins on Bonn side are optocouplers so pullup is needed (was cabled on first hardware)
@@ -262,6 +276,14 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
         digitalWrite(LEDS_PIN, LOW);}
 
       currentState = reqState;
+    }
+
+    void resetExposureParam(){
+      doExposure = false;
+      openStartedAt = 0;
+      fullyOpenAt = 0;
+      closeStartedAt = 0;
+      fullyClosedAt = 0;
     }
 
     
@@ -654,7 +676,15 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
         v = UpdateStatusWord();
         now = millis();
       }
-      
+      // if an exposure has been declared then save required variable
+      if (doExposure){
+        if (val!=STATUS_BCRC){
+          openStartedAt = t;
+          fullyOpenAt = now;}
+        else {
+          closeStartedAt = t;
+          fullyClosedAt = now;}
+      }
       return (v == val);
     }
     
@@ -790,6 +820,32 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
           cmdOk = true;
         }
       }
+
+      /// EXPOSURE COMMANDS ///
+
+      if (CheckCommand(mycommand, "start_exposure"))
+      {
+        resetExposureParam();
+        doExposure = true;
+        cmdOk = true;
+      }
+
+      if (CheckCommand(mycommand, "finish_exposure"))
+      {
+        unsigned long transientTime1 = fullyOpenAt - openStartedAt;
+        unsigned long exposureTime = closeStartedAt - fullyOpenAt;
+        unsigned long transientTime2 = fullyClosedAt - closeStartedAt;
+
+        g_client.print(transientTime1);
+        g_client.print(',');
+        g_client.print(exposureTime);
+        g_client.print(',');
+        g_client.print(transientTime2);
+
+        resetExposureParam();
+        cmdOk = true;
+      }
+
     
       //////////////////////////////////////////// AFFICHAGE COMMANDE NOK /////////////////////////////////////////////
       if (!cmdOk)
