@@ -825,25 +825,38 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
 
       if (CheckCommand(mycommand, "start_exposure"))
       {
-        resetExposureParam();
-        doExposure = true;
-        cmdOk = true;
+        if (!doExposure){
+          resetExposureParam();
+          doExposure = true;
+          cmdOk = true;
+        }
+        else{
+          g_client.write("exposure already ongoing...");}
       }
 
       if (CheckCommand(mycommand, "finish_exposure"))
       {
-        unsigned long transientTime1 = fullyOpenAt - openStartedAt;
-        unsigned long exposureTime = closeStartedAt - fullyOpenAt;
-        unsigned long transientTime2 = fullyClosedAt - closeStartedAt;
+        if (doExposure){
+          // check that close cmd has logically followed open cmd
+          if (closeStartedAt > fullyOpenAt){
+            unsigned long transientTime1 = fullyOpenAt - openStartedAt;
+            unsigned long exposureTime = closeStartedAt - fullyOpenAt;
+            unsigned long transientTime2 = fullyClosedAt - closeStartedAt;
 
-        g_client.print(transientTime1);
-        g_client.print(',');
-        g_client.print(exposureTime);
-        g_client.print(',');
-        g_client.print(transientTime2);
+            g_client.print(transientTime1);
+            g_client.print(',');
+            g_client.print(exposureTime);
+            g_client.print(',');
+            g_client.print(transientTime2);
 
-        resetExposureParam();
-        cmdOk = true;
+            resetExposureParam();
+            cmdOk = true;
+          }
+          else{
+            g_client.write("still exposing...");}
+        }
+        else{
+          g_client.write("no exposure has been previously declared...");}
       }
 
     
