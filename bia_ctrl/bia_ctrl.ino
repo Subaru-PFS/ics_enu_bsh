@@ -21,7 +21,8 @@ dhcp-host=a8:61:0a:ae:14:fc,bsh-enu5
 dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
 *  
  */
-
+    //Define firware version from git-tagged-version
+    const String FIRMWARE_VERSION = "0.1.2-INSTRM-1504";
     
     //Uncomment the line below depending on the BSH
     #define ENU1
@@ -140,7 +141,8 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
     void setup()
     {
       Serial.begin(9600);      
-      Serial.println("BIADuino 0.1.2");
+      Serial.print("ics_enu_bsh_version=");
+      Serial.println(FIRMWARE_VERSION);
     
       if (Ethernet.begin(mac) == 0) 
       {
@@ -695,7 +697,7 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
       bool cmdOk;
       cmdOk = StatusEvolve(cmd, g_client);
           
-      // Controller status, parameters parsing    
+      // Controller status, parameters parsing
       
       if (CheckCommand(mycommand, "statword"))
       {
@@ -734,6 +736,12 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
         g_client.print(g_aperiod);
         g_client.print(',');
         g_client.print(g_apower);
+        cmdOk = true;
+      }
+
+      if (CheckCommand(mycommand, "get_version"))
+      {
+        g_client.print(FIRMWARE_VERSION);
         cmdOk = true;
       }
        
