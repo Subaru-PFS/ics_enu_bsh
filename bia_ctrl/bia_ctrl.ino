@@ -22,7 +22,7 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
 *  
  */
     //Define firware version from git-tagged-version
-    const String FIRMWARE_VERSION = "0.1.2-INSTRM-1504";
+    const char FIRMWARE_VERSION[] = "0.1.2-INSTRM-1504";
     
     //Uncomment the line below depending on the BSH
     #define ENU1
@@ -61,37 +61,35 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
     };
     
     
-    String Commands[] =
+    String StateCmds[] =
     {
       "bia_on", 
       "bia_off",
       "shut_open", 
       "shut_close",
-      "reboot",
       "blue_open", 
       "blue_close",
       "red_open", 
       "red_close",
       "init"
     };
-    #define COMMANDS_COUNT  10
+    #define STATECMDS_COUNT  9
     
-      // INPUT PINS DEFAULT
-      #define SHB_OPEN_PIN    3
-      #define SHB_CLOSE_PIN   A4
-      #define SHB_ERROR_PIN   2
-      #define SHR_OPEN_PIN    8
-      #define SHR_CLOSE_PIN   5
-      #define SHR_ERROR_PIN   1
+    // INPUT PINS DEFAULT
+    #define SHB_OPEN_PIN    3
+    #define SHB_CLOSE_PIN   A4
+    #define SHB_ERROR_PIN   2
+    #define SHR_OPEN_PIN    8
+    #define SHR_CLOSE_PIN   5
+    #define SHR_ERROR_PIN   1
 
-      #define PHR0_INPUT_PIN  A0
-      #define PHR1_INPUT_PIN  A1
+    #define PHR0_INPUT_PIN  A0
+    #define PHR1_INPUT_PIN  A1
 
-      //OUTPUT PINS DEFAULT
-      #define LEDS_PIN        9
-      #define SHB_PIN         7
-      #define SHR_PIN         6
-    
+    //OUTPUT PINS DEFAULT
+    #define LEDS_PIN        9
+    #define SHB_PIN         7
+    #define SHR_PIN         6
     
     // telnet defaults to port 23
     EthernetServer g_server(23);
@@ -99,7 +97,7 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
     CircularBuffer<char, 100> commandBuffer;
     int bufferSize;
     char commandStr[100];
-    char EOL[] = "\r\n";
+    const char EOL[] = "\r\n";
         
     // BIA Controller MODES
     int bia_mode;
@@ -133,7 +131,7 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
     #define STATUS_BORC        0x62 //Blue OPEN Red CLOSED no error
     #define STATUS_BORO        0x64 //Blue OPEN Red OPEN no error
     
-    int ShutterMotionTimeout = 2000;   
+    const int ShutterMotionTimeout = 2000;   
     
     int StatWord;
     
@@ -274,7 +272,7 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
     
       i = 0;
       found = false;
-      while ((i < COMMANDS_COUNT) && (!CheckCommand(comm, Commands[i])))
+      while ((i < STATECMDS_COUNT) && (!CheckCommand(comm, StateCmds[i])))
         i++;
     
       return i;
@@ -306,31 +304,28 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
               case 3://shut_close while they are already closed NOK
                 break;
     
-              case 4://reboot OK
-                break;
-    
-              case 5://blue_open : open blue shutter only OK
+              case 4://blue_open : open blue shutter only OK
                 bia_mode = 30;
                 cmdOk = true;
                 break;
     
-              case 6://blue_close while blue shutter is already closed NOK
+              case 5://blue_close while blue shutter is already closed NOK
                 break;
     
-              case 7://red_open : open red shutter only OK
+              case 6://red_open : open red shutter only OK
                 bia_mode = 40;
                 cmdOk = true;
                 break;
     
-              case 8://red_close : close red shutter while already closed NOK
+              case 7://red_close : close red shutter while already closed NOK
                 break;
 
-              case 9://init : close both shutters, bia_off OK
+              case 8://init : close both shutters, bia_off OK
                 bia_mode = 0;
                 cmdOk = true;
                 break;
 
-              case COMMANDS_COUNT://error / command not found NOK
+              case STATECMDS_COUNT://error / command not found NOK
                 break;
 
             }
@@ -355,27 +350,24 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
               case 3://shut_close while shutters are already closed NOK
                 break;
     
-              case 4://reboot
+              case 4://blue_open, INTERLOCK NOK
                 break;
     
-              case 5://blue_open, INTERLOCK NOK
+              case 5://blue_close while shutter blue is already closed NOK
                 break;
     
-              case 6://blue_close while shutter blue is already closed NOK
+              case 6://red_open, INTERLOCK NOK
                 break;
     
-              case 7://red_open, INTERLOCK NOK
+              case 7://red_close while shutter red already closed NOK
                 break;
     
-              case 8://red_close while shutter red already closed NOK
-                break;
-    
-              case 9://init : close both shutters, bia_off, OK
+              case 8://init : close both shutters, bia_off, OK
                 bia_mode = 0;
                 cmdOk = true;
                 break;
 
-              case COMMANDS_COUNT://error / command not found NOK
+              case STATECMDS_COUNT://error / command not found NOK
                 break;
             }
             break;
@@ -399,31 +391,28 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
                 cmdOk = true;
                 break;
     
-              case 4://reboot OK
+              case 4://blue_open while shutter blue is already open, NOK
                 break;
     
-              case 5://blue_open while shutter blue is already open, NOK
-                break;
-    
-              case 6://blue_close : close blue shutter only OK
+              case 5://blue_close : close blue shutter only OK
                 bia_mode = 40;
                 cmdOk = true;
                 break;
     
-              case 7://red_open while shutter red is already open, NOK
+              case 6://red_open while shutter red is already open, NOK
                 break;
     
-              case 8://red_close : close red shutter only OK
+              case 7://red_close : close red shutter only OK
                 bia_mode = 30;
                 cmdOk = true;
                 break;
     
-              case 9://init : close both shutters, bia_off, OK
+              case 8://init : close both shutters, bia_off, OK
                 bia_mode = 0;
                 cmdOk = true;
                 break;
 
-              case COMMANDS_COUNT://error / command not found NOK
+              case STATECMDS_COUNT://error / command not found NOK
                 break;
             }
             break;
@@ -450,31 +439,28 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
                 cmdOk = true;
                 break;
     
-              case 4://reboot OK
+              case 4://blue_open while blue shutter is already open NOK
                 break;
     
-              case 5://blue_open while blue shutter is already open NOK
-                break;
-    
-              case 6://blue_close : close blue shutter only OK
+              case 5://blue_close : close blue shutter only OK
                 bia_mode = 0;
                 cmdOk = true;
                 break;
     
-              case 7://red_open : open red shutter only OK
+              case 6://red_open : open red shutter only OK
                 bia_mode = 20;
                 cmdOk = true;
                 break;
     
-              case 8://red_close while red shutter already closed NOK
+              case 7://red_close while red shutter already closed NOK
                 break;
     
-              case 9://init, close both shutters, bia_off OK
+              case 8://init, close both shutters, bia_off OK
                 bia_mode = 0;
                 cmdOk = true;
                 break;
 
-              case COMMANDS_COUNT://error / command not found NOK
+              case STATECMDS_COUNT://error / command not found NOK
                 break;
             }
             break;
@@ -500,31 +486,28 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
                 cmdOk = true;
                 break;
     
-              case 4://reboot OK
-                break;
-    
-              case 5://blue_open : open blue shutter only OK
+              case 4://blue_open : open blue shutter only OK
                 bia_mode = 20;
                 cmdOk = true;
                 break;
     
-              case 6://blue_close while blue shutter is already closed NOK
+              case 5://blue_close while blue shutter is already closed NOK
                 break;
     
-              case 7://red_open while red shutter is already open NOK
+              case 6://red_open while red shutter is already open NOK
                 break;
     
-              case 8://red_close : close red shutter only OK
+              case 7://red_close : close red shutter only OK
                 bia_mode = 0;
                 cmdOk = true;
                 break;
     
-              case 9://init : close both shutters, bia_off OK
+              case 8://init : close both shutters, bia_off OK
                 bia_mode = 0;
                 cmdOk = true;
                 break;
 
-              case COMMANDS_COUNT://error / command not found NOK
+              case STATECMDS_COUNT://error / command not found NOK
                 break;
             }
             break;
@@ -644,7 +627,6 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
       shr_close_status = digitalRead(SHR_CLOSE_PIN);  // RS fermé //
       shr_err_status = digitalRead(SHR_ERROR_PIN);  //RS error //
 
-
       StatWord = (1<<6)+
                  (!(shb_open_status)<<5)+
                  (!(shb_close_status)<<4)+
@@ -653,18 +635,8 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
                  (!(shr_close_status)<<1)+
                  (!shr_err_status);
    
-   /*
-       StatWord = (1<<6)+
-                 ((shb_open_status)<<5)+
-                 ((shb_close_status)<<4)+
-                 ((shb_err_status)<<3)+
-                 ((shr_open_status)<<2)+
-                 ((shr_close_status)<<1)+
-                 (shr_err_status);
-  */
       return StatWord;
     }
-    
     
     bool WaitForCompletion(int val)
     {
@@ -685,7 +657,6 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
       
       return (v == val);
     }
-    
     
     void Command(EthernetClient g_client, String mycommand)
     {
@@ -819,34 +790,8 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
           cmdOk = true;
         }
       }
-
-      /// SET NEW SHUTTERS PARAMETERS ///
-
-      if (CheckCommand(mycommand, "set_shutter_timeout"))
-      {
-        int mylen = mycommand.length();
-        String inter = mycommand.substring(19, mylen);
     
-        v = (long)inter.toInt();
-        
-        if ((v > 0) && (v < 65536)) {
-          ShutterMotionTimeout = v; //v is in ms
-          g_client.print(ShutterMotionTimeout);
-          cmdOk = true;
-        }
-      }
-    
-    
-      ////////////////////////////////////////////////////////////////////////////////////////////////ARRET SERVEUR /////////////////////////////////////////////////////////////////////////
-      if (CheckCommand(mycommand, "stop"))
-      {
-        bia_mode = 0;
-        g_client.write("ok\r\n");
-        g_client.stop();
-        return ;
-      }
-    
-      /////////////////////////////////////////////////////////////////////////////////////////////// AFFICHAGE COMMANDE NOK ///////////////////////////////////////////////////////////////////
+      //////////////////////////////////////////// AFFICHAGE COMMANDE NOK /////////////////////////////////////////////
       if (!cmdOk)
       {
         g_client.write("nok\r\n");
@@ -860,14 +805,9 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
     }
     
     
-    void software_reset() // Restarts program from beginning but does not reset the peripherals and registers
-    {
-      asm volatile ("  jmp 0");
-    }
-    
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////////////////BOUCLE PRINCIPALE///////////////////////////////////////////////////////////////////////////////////////
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////// MAIN LOOP //////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     
     void loop() {
       switch (Ethernet.maintain()) {
