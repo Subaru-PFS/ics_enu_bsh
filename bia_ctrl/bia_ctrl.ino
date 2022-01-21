@@ -106,18 +106,18 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
     bool currentState;
 
     const unsigned int scaling = 100;
-    const long noStrobeDuty = 100;
-    const long noStrobePeriod = 1000;
+    const unsigned int noStrobeDuty = 100;
+    const unsigned int noStrobePeriod = 1000;
     unsigned int divFactor;
     unsigned int maxOnIter;
     unsigned int cycleIter;
 
-    long g_aduty; // duty
-    long g_aperiod; // period
-    long g_apower; // power
+    unsigned int g_aduty; // duty
+    unsigned int g_aperiod; // period
+    unsigned int g_apower; // power
 
-    long g_sduty; // saved duty
-    long g_speriod; // saved period
+    unsigned int g_sduty; // saved duty
+    unsigned int g_speriod; // saved period
     
     boolean shb_open_status;
     boolean shb_close_status;
@@ -228,19 +228,19 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
     }
 
     
-    int CalcGCD(long a, long b) {
+    int CalcGCD(unsigned int a, unsigned int b) {
       if (b == 0){
         return a;}
       else {
         return CalcGCD(b, a % b);}
     }
 
-    bool SetBiaParameters(long duty, long period)
+    bool SetBiaParameters(unsigned int duty, unsigned int period)
     {
       if ((duty < 0) || (duty > 100))
         return false;
 
-      long gcd = CalcGCD(scaling, duty);
+      unsigned int gcd = CalcGCD(scaling, duty);
       if (period<(scaling/gcd))
         return false;
 
@@ -746,14 +746,14 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
 
       /// SET NEW BIA PARAMETERS ///
       
-      long v;
+      unsigned int v;
 
       if (CheckCommand(mycommand, "set_duty"))
       {
         int mylen = mycommand.length();
         String inter = mycommand.substring(8, mylen);
 
-        v = (long)inter.toInt();
+        v = (unsigned int)inter.toInt();
 
         if (SetBiaParameters(v, g_speriod)){
           g_sduty = v;
@@ -767,7 +767,7 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
         int mylen = mycommand.length();
         String inter = mycommand.substring(10, mylen);
     
-        v = (long)inter.toInt();
+        v = (unsigned int)inter.toInt();
       
         if (SetBiaParameters(g_sduty, v)){
           g_speriod = v;
@@ -781,7 +781,7 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
         int mylen = mycommand.length();
         String inter = mycommand.substring(9, mylen);
     
-        v = (long)inter.toInt();
+        v = (unsigned int)inter.toInt();
       
         if ((v > 0) && (v < 256)){
           g_apower = v;
