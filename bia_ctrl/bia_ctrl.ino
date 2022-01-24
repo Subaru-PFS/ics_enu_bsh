@@ -1,12 +1,8 @@
-
 #include <SPI.h>
 #include <Ethernet.h>
 #include <CircularBuffer.h>
-
 #include <MsTimer2.h>
-
-    
-    
+ 
 // Enter a MAC address and IP address for your controller below.
 // The IP address will be dependent on your local network.
 // gateway and subnet are optional:
@@ -22,8 +18,8 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
 *  
  */
     //Define firware version from git-tagged-version
-    const char FIRMWARE_VERSION[] = "0.1.2-INSTRM-1504";
-    
+    const char FIRMWARE_VERSION[] = "0.1.3-INSTRM-1253";
+
     //Uncomment the line below depending on the BSH
     #define ENU1
     //#define ENU2
@@ -60,8 +56,7 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
       #endif
     };
     
-    
-    String StateCmds[] =
+    String state_commands[] =
     {
       "bia_on", 
       "bia_off",
@@ -94,30 +89,30 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
     // telnet defaults to port 23
     EthernetServer g_server(23);
 
-    CircularBuffer<char, 100> commandBuffer;
-    int bufferSize;
-    char commandStr[100];
+    CircularBuffer<char, 100> command_buffer;
+    int buffer_size;
+    char command_str[100];
     const char EOL[] = "\r\n";
+
+    //Error
+    const char ERROR_SHUTTER_TIMEOUT[] = "shutter switch timeout.";
+    const char ERROR_EXP_ALREADY_DECLARED[] = "exposure already declared.";
+    const char ERROR_EXP_SHUTTER_NOT_OPEN[] = "shutter not yet open.";
+    const char ERROR_EXP_SHUTTER_NOT_CLOSED[] = "shutter not yet close.";
+    const char ERROR_EXP_NOT_DECLARED[] = "no exposure declared.";
         
-    // BIA Controller MODES
+    // BIA Variables
     int bia_mode;
-    bool BIAIsOn;
-    bool ledState;
-    bool currentState;
+    bool bia_is_on;
+    bool desired_led_state;
+    bool current_led_state;
 
-    // Exposure variables
-    bool doExposure;
-    unsigned long openStartedAt;
-    unsigned long fullyOpenAt;
-    unsigned long closeStartedAt;
-    unsigned long fullyClosedAt;
-
-    const unsigned int scaling = 100;
-    const unsigned int noStrobeDuty = 100;
-    const unsigned int noStrobePeriod = 1000;
-    unsigned int divFactor;
-    unsigned int maxOnIter;
-    unsigned int cycleIter;
+    const unsigned int SCALING = 100;
+    const unsigned int NO_STROBE_DUTY = 100;
+    const unsigned int NO_STROBE_PERIOD = 1000;
+    unsigned int div_factor;
+    unsigned int max_on_iter;
+    unsigned int cycle_iter;
 
     unsigned int g_aduty; // duty
     unsigned int g_aperiod; // period
@@ -125,7 +120,8 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
 
     unsigned int g_sduty; // saved duty
     unsigned int g_speriod; // saved period
-    
+
+    // Shutters variables
     boolean shb_open_status;
     boolean shb_close_status;
     boolean shb_err_status;
@@ -138,26 +134,33 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
     #define STATUS_BORC        0x62 //Blue OPEN Red CLOSED no error
     #define STATUS_BORO        0x64 //Blue OPEN Red OPEN no error
     
-    const int ShutterMotionTimeout = 2000;   
-    
-    int StatWord;
+    const int SHUTTER_MOTION_TIMEOUT = 2000;
+    int status_word;
+
+    // Exposure variables
+    bool do_exposure;
+    unsigned long open_started_at;
+    unsigned long fully_open_at;
+    unsigned long close_started_at;
+    unsigned long fully_closed_at;
     
     // setup
-    void setup()
-    {
+    void setup(){
+      // Serial just when usb is connected
       Serial.begin(9600);      
       Serial.print("ics_enu_bsh_version=");
       Serial.println(FIRMWARE_VERSION);
     
-      if (Ethernet.begin(mac) == 0) 
-      {
-        Serial.println("Failed to configure Ethernet using DHCP");
+      if (Ethernet.begin(mac) == 0){
+        Serial.println("Failed to configure Ethernet using DHCP.");
 
         if (Ethernet.hardwareStatus() == EthernetNoHardware) {
-          Serial.println("Ethernet shield was not found.  Sorry, can't run without hardware. ");}
+          Serial.println("Ethernet shield was not found.");
+        }
            
         else if (Ethernet.linkStatus() == LinkOFF) {
-          Serial.println("Ethernet cable is not connected.");}
+          Serial.println("Ethernet cable is not connected.");
+        }
         // no point in carrying on, so do nothing forevermore:
         for (;;);
       }
@@ -167,7 +170,6 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
       Serial.println(Ethernet.localIP());
       delay(1000);
 
-    
       // Set BIA :ode to IDLE
       bia_mode = 0;
 
@@ -176,26 +178,26 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
       #define SHUTTER_HIGH LOW
     
       //////////////////////////////////// PARAM BIA /////////////////////////////////////////
-      cycleIter = 0;
-      divFactor = 1;
-      maxOnIter = 1;
+      cycle_iter = 0;
+      div_factor = 1;
+      max_on_iter = 1;
       g_apower = 0; // 0% power
-      g_aduty = noStrobeDuty;
-      g_aperiod = noStrobePeriod;
+      g_aduty = NO_STROBE_DUTY;
+      g_aperiod = NO_STROBE_PERIOD;
 
       g_sduty = g_aduty;
       g_speriod = g_aperiod;
 
-      BIAIsOn = false;
-      ledState = false;
-      currentState = false;
+      bia_is_on = false;
+      desired_led_state = false;
+      current_led_state = false;
 
       //////////////////////////////////// PARAM EXPOSURE //////////////////////////////////////
-      doExposure = false;
-      openStartedAt = 0;
-      fullyOpenAt = 0;
-      closeStartedAt = 0;
-      fullyClosedAt = 0;
+      do_exposure = false;
+      open_started_at = 0;
+      fully_open_at = 0;
+      close_started_at = 0;
+      fully_closed_at = 0;
 
       //////////////////////////////////// PIN IO MODES ////////////////////////////////////////            
       //Shutter status pins on Bonn side are optocouplers so pullup is needed (was cabled on first hardware)
@@ -222,91 +224,104 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
       digitalWrite(SHR_PIN, SHUTTER_LOW);     
       digitalWrite(SHB_PIN, SHUTTER_LOW);     
     
-      MsTimer2::set(g_aperiod, Timer); // 1000ms period
+      MsTimer2::set(g_aperiod, biaTimerCallback); // 1000ms period
       MsTimer2::start();
     }
-    
-    //ISR(TIMER1_COMPA_vect)
-    void Timer()
-    { //timer1 interrupt 1Hz
-      if (BIAIsOn)
-      {
-        ledState = cycleIter < maxOnIter;
-        if (ledState!=currentState){
-          switchBiaLED(ledState);}
 
-        cycleIter++;
-        if (cycleIter>=divFactor)
-          cycleIter = 0;
+    void setTimerPeriod(unsigned int timer_period){
+      // set timer period, note that MsTimer2.set() take nominally unsigned long.
+      MsTimer2::stop();
+      MsTimer2::set(timer_period, biaTimerCallback);
+      MsTimer2::start();
+    }
+
+    //ISR(TIMER1_COMPA_vect)
+    void biaTimerCallback(){
+      // bia timer callback.
+      if (bia_is_on){
+        desired_led_state = cycle_iter < max_on_iter;
+        if (desired_led_state != current_led_state){
+          switchBiaLED(desired_led_state);
+        }
+        cycle_iter++;
+        if (cycle_iter >= div_factor){
+          cycle_iter = 0;
+        }
       }
     }
 
-    
-    int CalcGCD(unsigned int a, unsigned int b) {
+    int calcGCD(unsigned int a, unsigned int b) {
+      // calculate greatest common divisor.
       if (b == 0){
-        return a;}
+        return a;
+      }
       else {
-        return CalcGCD(b, a % b);}
+        return calcGCD(b, a % b);
+      }
     }
 
-    bool SetBiaParameters(unsigned int duty, unsigned int period)
-    {
-      if ((duty < 0) || (duty > 100))
+    bool setBiaParameters(unsigned int duty, unsigned int period){
+      // set new bia parameters.
+      // check duty range(1-100)
+      if ((duty < 1) || (duty > 100)){
         return false;
+      }
 
-      unsigned int gcd = CalcGCD(scaling, duty);
-      if (period<(scaling/gcd))
+      unsigned int gcd = calcGCD(SCALING, duty);
+      if (period<(SCALING/gcd)){
         return false;
-
-      divFactor = scaling / gcd;
-      maxOnIter = duty / gcd;
+      }
+  
+      div_factor = SCALING / gcd;
+      max_on_iter = duty / gcd;
       g_aduty = duty;
       g_aperiod = period;
 
-      SetPeriod(period/divFactor);
+      setTimerPeriod(period/div_factor);
       return true;
 
     }
 
-    void switchBiaLED(bool reqState)
-    {
-      if (reqState) {
+    void switchBiaLED(bool requested_state){
+      // change LED state.
+      if (requested_state) {
         analogWrite(LEDS_PIN, g_apower);}
       else {
         digitalWrite(LEDS_PIN, LOW);}
 
-      currentState = reqState;
+      current_led_state = requested_state;
     }
 
     void resetExposureParam(){
-      doExposure = false;
-      openStartedAt = 0;
-      fullyOpenAt = 0;
-      closeStartedAt = 0;
-      fullyClosedAt = 0;
+      // reset exposure parameters.
+      do_exposure = false;
+      open_started_at = 0;
+      fully_open_at = 0;
+      close_started_at = 0;
+      fully_closed_at = 0;
     }
 
-    
-    int CommandCode(String comm)
-    {
+    int getCommandCode(String comm){
+      // return state command indice.
       int i;
       bool found;
-    
+   
       i = 0;
       found = false;
-      while ((i < STATECMDS_COUNT) && (!CheckCommand(comm, StateCmds[i])))
+      while ((i < STATECMDS_COUNT) && (!checkCommand(comm, state_commands[i])))
         i++;
     
       return i;
     }
     
-    bool StatusEvolve(int command, EthernetClient g_client)
-    {
+    bool statusEvolve(int command, EthernetClient g_client){
+      // state machine command, will be rejected if forbidden or irrelevant.
       bool cmdOk = false;
-    
+
       switch (bia_mode)
       {
-        case 0: // == everything OFF
+        ////////////// BIA OFF, BLUE shutter CLOSED, RED shutter CLOSED ///////////////
+        case 0:
           {
             switch (command)
             {
@@ -353,7 +368,7 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
             }
             break;
           }
-    
+        ////////////// BIA ON, BLUE shutter CLOSED, RED shutter CLOSED ///////////////
         case 10: // == BIA is ON
           {
             switch (command)
@@ -394,8 +409,8 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
             }
             break;
           }
-    
-        case 20: // == Shutters are OPEN
+        ////////////// BIA OFF, BLUE shutter OPEN, RED shutter OPEN ///////////////
+        case 20:
           {
             switch (command)
             {
@@ -438,10 +453,9 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
                 break;
             }
             break;
-    
           }
-    
-        case 30:// == BLUE Shutter OPEN & RED CLOSED
+        ////////////// BIA OFF, BLUE shutter OPEN, RED shutter CLOSED ////////////////
+        case 30:
           {
             switch (command)
             {
@@ -487,8 +501,8 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
             }
             break;
           }
-    
-        case 40:// == RED Shutter OPEN & BLUE CLOSED
+        ////////////// BIA OFF, BLUE shutter CLOSED, RED shutter OPEN ///////////////
+        case 40:
           {
             switch (command)
             {
@@ -538,200 +552,173 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
       if (!cmdOk){
         return cmdOk;
       }
-    
+
+      //Actions upon state
       switch (bia_mode)
-      { //Actions upon state
-        case 0:  //All off.
-          BIAIsOn = false;
-          switchBiaLED(BIAIsOn);
+      {
+        ////////////// BIA OFF, BLUE shutter CLOSED, RED shutter CLOSED ///////////////
+        case 0:
+          bia_is_on = false;
+          switchBiaLED(bia_is_on);
     
-          digitalWrite(SHR_PIN, SHUTTER_LOW); //Both shutters closed
-          digitalWrite(SHB_PIN, SHUTTER_LOW);
+          digitalWrite(SHR_PIN, SHUTTER_LOW); //CLOSED
+          digitalWrite(SHB_PIN, SHUTTER_LOW); //CLOSED
 
-//          ReportCompletion(STATUS_BCRC);
-          if (!WaitForCompletion(STATUS_BCRC))
-          {
-            g_client.write("shutter switch timeout");
+          if (!waitForCompletion(STATUS_BCRC)){
+            g_client.write(ERROR_SHUTTER_TIMEOUT);
             cmdOk=false;
           }
-
           break;
     
-        /////////////////////////////////////////////////////////////////// ACTIONS DU MODE 1 SHUTTER//
-        case 10: //BIA is ON, shutters are closed
-          BIAIsOn = true;
+        ////////////// BIA ON, BLUE shutter CLOSED, RED shutter CLOSED ///////////////
+        case 10:
+          bia_is_on = true;
     
-          digitalWrite(SHR_PIN, SHUTTER_LOW); //Both shutters closed
-          digitalWrite(SHB_PIN, SHUTTER_LOW);
+          digitalWrite(SHR_PIN, SHUTTER_LOW); //CLOSED
+          digitalWrite(SHB_PIN, SHUTTER_LOW); //CLOSED
           
-          if (!WaitForCompletion(STATUS_BCRC))
-          {
-            g_client.write("shutter switch timeout");
+          if (!waitForCompletion(STATUS_BCRC)){
+            g_client.write(ERROR_SHUTTER_TIMEOUT);
             cmdOk=false;
           }
-          
           break;
-        // //////////////////////////////////////////////////////////////////ACTIONS DU MODE BIA//
-        case 20: //BIA is OFF, shutters are OPEN
-          BIAIsOn = false;
-          switchBiaLED(BIAIsOn);
+
+        ////////////// BIA OFF, BLUE shutter OPEN, RED shutter OPEN ///////////////
+        case 20:
+          bia_is_on = false;
+          switchBiaLED(bia_is_on);
     
-          digitalWrite(SHR_PIN, SHUTTER_HIGH); //Both shutters closed
-          digitalWrite(SHB_PIN, SHUTTER_HIGH);
-          
-          
-          if (!WaitForCompletion(STATUS_BORO))
-          {
-            g_client.write("shutter switch timeout");
+          digitalWrite(SHR_PIN, SHUTTER_HIGH); //OPEN
+          digitalWrite(SHB_PIN, SHUTTER_HIGH); //OPEN
+
+          if (!waitForCompletion(STATUS_BORO)){
+            g_client.write(ERROR_SHUTTER_TIMEOUT);
             cmdOk=false;
           }
-
           break;
-    
-        case 30:// BIA is OFF, Blue shutter is OPEN Red is CLOSED
-          BIAIsOn = false;
-          switchBiaLED(BIAIsOn);
+
+        ////////////// BIA OFF, BLUE shutter OPEN, RED shutter CLOSED ////////////////
+        case 30:
+          bia_is_on = false;
+          switchBiaLED(bia_is_on);
     
           digitalWrite(SHB_PIN, SHUTTER_HIGH); //OPEN
           digitalWrite(SHR_PIN, SHUTTER_LOW);  //CLOSED
-          
-//          ReportCompletion(STATUS_BORC);
-          if (!WaitForCompletion(STATUS_BORC))
-          {
-            g_client.write("shutter switch timeout");
+
+          if (!waitForCompletion(STATUS_BORC)){
+            g_client.write(ERROR_SHUTTER_TIMEOUT);
             cmdOk=false;
           }
-
           break;
+
+        ////////////// BIA OFF, BLUE shutter CLOSED, RED shutter OPEN ///////////////
+        case 40:
+          bia_is_on = false;
+          switchBiaLED(bia_is_on);
     
-        case 40://BIA OFF, Red Shutter open, Blue closed
-          BIAIsOn = false;
-          switchBiaLED(BIAIsOn);
-    
-          digitalWrite(SHB_PIN, SHUTTER_LOW); //CLOSED
-          digitalWrite(SHR_PIN, SHUTTER_HIGH);  //OPEN
-          
-//          ReportCompletion(STATUS_BCRO);
-          if (!WaitForCompletion(STATUS_BCRO))
-          {
-            g_client.write("shutter switch timeout");
+          digitalWrite(SHB_PIN, SHUTTER_LOW);  //CLOSED
+          digitalWrite(SHR_PIN, SHUTTER_HIGH); //OPEN
+
+          if (!waitForCompletion(STATUS_BCRO)){
+            g_client.write(ERROR_SHUTTER_TIMEOUT);
             cmdOk=false;
           }
-
           break;
       }
       return cmdOk;
     }
-    
-    
-    bool CheckCommand(String command, String keyword)
-    {
-      int l = keyword.length();
-      return (command.substring(0, l) == keyword);
+
+    bool checkCommand(String input_command, String known_command){
+      // check input command against known command.
+      int l = known_command.length();
+      return (input_command.substring(0, l) == known_command);
     }
     
-    void SetPeriod(int d)
-    {
-      //OCR1A = d;
-    
-      MsTimer2::stop();
-      MsTimer2::set(d, Timer);
-      MsTimer2::start();
-    }
-    
-    int UpdateStatusWord()
-    {
-       ///// LECTURE EFFECTIVE DES STATUS SUR PORT IO ARDUINO //
-      shb_open_status = digitalRead(SHB_OPEN_PIN);       // BS ouvert//
-      shb_close_status = digitalRead(SHB_CLOSE_PIN); // BS ferme //
+    int updateStatusWord(){
+      // reading actual inputs from shutters.
+      
+      shb_open_status = digitalRead(SHB_OPEN_PIN);    // BS open limit switch state//
+      shb_close_status = digitalRead(SHB_CLOSE_PIN); // BS close limit switch state //
       shb_err_status = digitalRead(SHB_ERROR_PIN); // BS error //
-      shr_open_status = digitalRead(SHR_OPEN_PIN); // RS ouvert //
-      shr_close_status = digitalRead(SHR_CLOSE_PIN);  // RS fermé //
+      shr_open_status = digitalRead(SHR_OPEN_PIN); // RS open limit switch state //
+      shr_close_status = digitalRead(SHR_CLOSE_PIN);  // RS close limit switch state //
       shr_err_status = digitalRead(SHR_ERROR_PIN);  //RS error //
 
-      StatWord = (1<<6)+
-                 (!(shb_open_status)<<5)+
-                 (!(shb_close_status)<<4)+
-                 (!(shb_err_status)<<3)+
-                 (!(shr_open_status)<<2)+
-                 (!(shr_close_status)<<1)+
-                 (!shr_err_status);
+      status_word = (1<<6) +
+                    (!(shb_open_status)<<5) +
+                    (!(shb_close_status)<<4) +
+                    (!(shb_err_status)<<3) +
+                    (!(shr_open_status)<<2) +
+                    (!(shr_close_status)<<1) +
+                    (!shr_err_status);
    
-      return StatWord;
+      return status_word;
     }
     
-    bool WaitForCompletion(int val)
-    {
-      int t, now;
-      int v;
+    bool waitForCompletion(int dest){
+      // wait for shutter status word to match dest word.
+      unsigned long motion_start, now_ms;
+      int wd;
       
-      t = millis();
-      now = t;
+      motion_start = millis();
+      now_ms = motion_start;
+      wd = updateStatusWord();
       
-      v = UpdateStatusWord();
-      
-      while ((v != val) && ((now-t)<ShutterMotionTimeout))
-      {
+      while ((wd != dest) && ((now_ms - motion_start) < SHUTTER_MOTION_TIMEOUT)){
         delay(10);
-        v = UpdateStatusWord();
-        now = millis();
+        wd = updateStatusWord();
+        now_ms = millis();
       }
-      // if an exposure has been declared then save required variable
-      if (doExposure){
-        if (val!=STATUS_BCRC){
-          openStartedAt = t;
-          fullyOpenAt = now;}
+      // if an exposure has been declared then save required variable.
+      if (do_exposure){
+        if (dest != STATUS_BCRC){
+          open_started_at = motion_start;
+          fully_open_at = now_ms;
+        }
         else {
-          closeStartedAt = t;
-          fullyClosedAt = now;}
+          close_started_at = motion_start;
+          fully_closed_at = now_ms;
+        }
       }
-      return (v == val);
+      return (wd == dest);
     }
     
-    void Command(EthernetClient g_client, String mycommand)
-    {
-    
-      UpdateStatusWord();
-      
-      int cmd = CommandCode(mycommand);
+    void parseCommand(EthernetClient g_client, String input_command){
+      // parse input command.
+      updateStatusWord();
 
-      bool cmdOk;
-      cmdOk = StatusEvolve(cmd, g_client);
+      // check state machine command.
+      int cmd = getCommandCode(input_command);
+      bool cmdOk = statusEvolve(cmd, g_client);
           
-      // Controller status, parameters parsing
+      /// STATUS, PARAMETERS COMMAND. ///
       
-      if (CheckCommand(mycommand, "statword"))
-      {
-        g_client.print(StatWord);
+      if (checkCommand(input_command, "statword")){
+        g_client.print(status_word);
         cmdOk = true;
       }
     
-      if (CheckCommand(mycommand, "status"))
-      {
+      if (checkCommand(input_command, "status")){
         g_client.print(bia_mode);
         cmdOk = true;
       }
 
-      if (CheckCommand(mycommand, "get_duty"))
-      {
+      if (checkCommand(input_command, "get_duty")){
         g_client.print(g_aduty);
         cmdOk = true;
       }
     
-      if (CheckCommand(mycommand, "get_period"))
-      {
+      if (checkCommand(input_command, "get_period")){
         g_client.print(g_aperiod);
         cmdOk = true;
       }
     
-      if (CheckCommand(mycommand, "get_power"))
-      {
+      if (checkCommand(input_command, "get_power")){
         g_client.print(g_apower);
         cmdOk = true;
       }
 
-      if (CheckCommand(mycommand, "get_param"))
-      {
+      if (checkCommand(input_command, "get_param")){
         g_client.print(g_aduty);
         g_client.print(',');
         g_client.print(g_aperiod);
@@ -740,14 +727,12 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
         cmdOk = true;
       }
 
-      if (CheckCommand(mycommand, "get_version"))
-      {
+      if (checkCommand(input_command, "get_version")){
         g_client.print(FIRMWARE_VERSION);
         cmdOk = true;
       }
        
-      if (CheckCommand(mycommand, "read_phr"))
-      {
+      if (checkCommand(input_command, "read_phr")){
         int phr0, phr1;
         phr0 = analogRead(PHR0_INPUT_PIN);
         phr1 = analogRead(PHR1_INPUT_PIN);
@@ -761,61 +746,55 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
       
       /// (DE)ACTIVATE BIA STROBING MODE ///
     
-      if (CheckCommand(mycommand, "pulse_on"))
-      {
-        SetBiaParameters(g_sduty, g_speriod);
+      if (checkCommand(input_command, "pulse_on")){
+        setBiaParameters(g_sduty, g_speriod);
         cmdOk = true;
       }
     
-      if (CheckCommand(mycommand, "pulse_off"))
-      {
-        SetBiaParameters(noStrobeDuty, noStrobePeriod);
+      if (checkCommand(input_command, "pulse_off")){
+        setBiaParameters(NO_STROBE_DUTY, NO_STROBE_PERIOD);
         cmdOk = true;
       }
 
-
       /// SET NEW BIA PARAMETERS ///
       
-      unsigned int v;
+      unsigned int new_value;
 
-      if (CheckCommand(mycommand, "set_duty"))
-      {
-        int mylen = mycommand.length();
-        String inter = mycommand.substring(8, mylen);
+      if (checkCommand(input_command, "set_duty")){
+        int mylen = input_command.length();
+        String inter = input_command.substring(8, mylen);
 
-        v = (unsigned int)inter.toInt();
+        new_value = (unsigned int)inter.toInt();
 
-        if (SetBiaParameters(v, g_speriod)){
-          g_sduty = v;
+        if (setBiaParameters(new_value, g_speriod)){
+          g_sduty = new_value;
           g_client.print(g_sduty);
           cmdOk = true;
         }
       }
 
-      if (CheckCommand(mycommand, "set_period"))
-      {
-        int mylen = mycommand.length();
-        String inter = mycommand.substring(10, mylen);
+      if (checkCommand(input_command, "set_period")) {
+        int mylen = input_command.length();
+        String inter = input_command.substring(10, mylen);
     
-        v = (unsigned int)inter.toInt();
+        new_value = (unsigned int)inter.toInt();
       
-        if (SetBiaParameters(g_sduty, v)){
-          g_speriod = v;
+        if (setBiaParameters(g_sduty, new_value)){
+          g_speriod = new_value;
           g_client.print(g_speriod);
           cmdOk = true;
         }
       }
     
-      if (CheckCommand(mycommand, "set_power"))
-      {
-        int mylen = mycommand.length();
-        String inter = mycommand.substring(9, mylen);
+      if (checkCommand(input_command, "set_power")){
+        int mylen = input_command.length();
+        String inter = input_command.substring(9, mylen);
     
-        v = (unsigned int)inter.toInt();
+        new_value = (unsigned int)inter.toInt();
       
-        if ((v > 0) && (v < 256)){
-          g_apower = v;
-          switchBiaLED(BIAIsOn);
+        if ((new_value > 0) && (new_value < 256)){
+          g_apower = new_value;
+          switchBiaLED(bia_is_on);
           g_client.print(g_apower);
           cmdOk = true;
         }
@@ -823,69 +802,68 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
 
       /// EXPOSURE COMMANDS ///
 
-      if (CheckCommand(mycommand, "start_exposure"))
-      {
-        if (!doExposure){
+      if (checkCommand(input_command, "start_exp")){
+        if (!do_exposure){
           resetExposureParam();
-          doExposure = true;
+          do_exposure = true;
           cmdOk = true;
         }
         else{
-          g_client.write("exposure already ongoing...");}
+          g_client.write(ERROR_EXP_ALREADY_DECLARED);
+        }
       }
 
-      if (CheckCommand(mycommand, "finish_exposure"))
-      {
-        if (doExposure){
-          // check that close cmd has logically followed open cmd
-          if (closeStartedAt > fullyOpenAt){
-            unsigned long transientTime1 = fullyOpenAt - openStartedAt;
-            unsigned long exposureTime = closeStartedAt - fullyOpenAt;
-            unsigned long transientTime2 = fullyClosedAt - closeStartedAt;
+      if (checkCommand(input_command, "finish_exp")){
+        // check that close cmd has logically followed open cmd
+        if (do_exposure){
+          if (open_started_at==0){
+            g_client.write(ERROR_EXP_SHUTTER_NOT_OPEN);
+          }
+          else if (close_started_at==0){
+            g_client.write(ERROR_EXP_SHUTTER_NOT_CLOSED);
+          }
+          else{
+            unsigned long transient_time_opening = fully_open_at - open_started_at;
+            unsigned long exposure_time = close_started_at - fully_open_at;
+            unsigned long transient_time_closing = fully_closed_at - close_started_at;
 
-            g_client.print(transientTime1);
+            g_client.print(transient_time_opening);
             g_client.print(',');
-            g_client.print(exposureTime);
+            g_client.print(exposure_time);
             g_client.print(',');
-            g_client.print(transientTime2);
+            g_client.print(transient_time_closing);
 
             resetExposureParam();
             cmdOk = true;
           }
-          else{
-            g_client.write("still exposing...");}
         }
         else{
-          g_client.write("no exposure has been previously declared...");}
+          g_client.write(ERROR_EXP_NOT_DECLARED);
+        }
       }
 
-    
       //////////////////////////////////////////// AFFICHAGE COMMANDE NOK /////////////////////////////////////////////
-      if (!cmdOk)
-      {
+      if (!cmdOk){
         g_client.write("nok\r\n");
       }
-      else
-      {
+      else{
         g_client.write("ok\r\n");
       }
-    
-        return;   
+      return;
     }
-    
-    
+
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////// MAIN LOOP //////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     
     void loop() {
       switch (Ethernet.maintain()) {
-        case 1: Serial.println("Error: DHCP renewed fail. ");
+        case 1: Serial.println("DHCP renewed fail!");
                 break;
         case 2: Serial.println("DHCP renewed success:");
                 Serial.println(Ethernet.localIP());
                 break;
-        case 3: Serial.println("Error: DHCP rebind fail. ");
+        case 3: Serial.println("DHCP rebind fail!");
                 break;
         case 4: Serial.println("DHCP rebind success:");
                 Serial.println(Ethernet.localIP());
@@ -896,47 +874,42 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
       
       //  Serial.println("Waiting...");
       EthernetClient g_client = g_server.available();
-      if (g_client)
-      {
-        //Serial.println("client connected...");
-        commandBuffer.clear();
-        commandStr[0]='\0';
-        while (g_client.connected()) 
-        {
-          if (g_client.available())
-          {
-            while(g_client.available())
-            {
+      if (g_client){
+        // new client connected.
+        command_buffer.clear();
+        command_str[0]='\0';
+        while (g_client.connected()){
+          // while socket is open.
+          if (g_client.available()){
+            // client sent some bytes, put every character in the command_buffer.
+            while(g_client.available()){
               char c = g_client.read();
-                if (c !=  - 1)
-                {
-                  commandBuffer.unshift(c);
-                }  
+              if (c != -1){
+                command_buffer.unshift(c);
+              }
             }
-            bufferSize = commandBuffer.size();
-            
-            for (int i=0;i<bufferSize;i++)
-            {
-              commandStr[i] = commandBuffer[bufferSize-1-i];
+            // building the input command_str
+            buffer_size = command_buffer.size();
+            for (int i=0;i<buffer_size;i++){
+              command_str[i] = command_buffer[buffer_size-1-i];
             }
-            commandStr[bufferSize]= '\0';
+            command_str[buffer_size]= '\0';
 
-            char *ptr = strstr(commandStr, EOL);
-  
-            if (ptr != NULL) 
-            {
-              strtok(commandStr, EOL);
-
-              Command(g_client, commandStr);
-              
-              commandBuffer.clear();
-              commandStr[0]='\0';
+            //check that the EOL is indeed in the command_str.
+            char *ptr = strstr(command_str, EOL);
+            if (ptr != NULL){
+              // split EOL from command_str and parse command.
+              strtok(command_str, EOL);
+              parseCommand(g_client, command_str);
+              // clear command_buffer.
+              command_buffer.clear();
+              command_str[0]='\0';
             }
-            
           }
           delay(10);
+          // client is still connected, waiting for next command.
         }
-        //Serial.println("client disconnected...");
+        // client disconnected.
       }
 
     }
