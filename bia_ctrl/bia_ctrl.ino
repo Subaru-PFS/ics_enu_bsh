@@ -18,7 +18,7 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
 *  
  */
     //Define firware version from git-tagged-version
-    const char FIRMWARE_VERSION[] = "0.1.3-INSTRM-1253";
+    const char FIRMWARE_VERSION[] = "0.1.4";
 
     //Uncomment the line below depending on the BSH
     #define ENU1
@@ -836,6 +836,16 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
             resetExposureParam();
             cmdOk = true;
           }
+        }
+        else{
+          g_client.write(ERROR_EXP_NOT_DECLARED);
+        }
+      }
+
+      if (checkCommand(input_command, "cancel_exp")){
+        if (do_exposure){
+          resetExposureParam();
+          cmdOk = true;
         }
         else{
           g_client.write(ERROR_EXP_NOT_DECLARED);
