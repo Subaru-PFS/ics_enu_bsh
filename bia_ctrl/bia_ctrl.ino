@@ -255,11 +255,6 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
 
     bool setBiaParameters(unsigned int duty, unsigned int period){
       // set new bia parameters.
-      // check duty range(1-100)
-      if ((duty < 1) || (duty > 100)){
-        return false;
-      }
-
       unsigned int gcd = calcGCD(SCALING, duty);
       if (period<(SCALING/gcd)){
         return false;
@@ -272,7 +267,6 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
 
       setTimerPeriod(period/div_factor);
       return true;
-
     }
 
     void switchBiaLED(bool requested_state){
@@ -676,6 +670,13 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
       return (wd == dest);
     }
     
+    long retrieveInputValue(String input_command, String command_head){
+      // retrieve input value from input_command
+      String inter = input_command.substring(command_head.length(), input_command.length());
+      long new_value = inter.toInt();
+      return new_value;
+    }
+
     void parseCommand(EthernetClient g_client, String input_command){
       // parse input command.
       updateStatusWord();
@@ -751,15 +752,12 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
 
       /// SET NEW BIA PARAMETERS ///
       
-      unsigned int new_value;
+      long new_value;
 
       if (checkCommand(input_command, "set_duty")){
-        int mylen = input_command.length();
-        String inter = input_command.substring(8, mylen);
-
-        new_value = (unsigned int)inter.toInt();
-
-        if (setBiaParameters(new_value, g_speriod)){
+        new_value = retrieveInputValue(input_command, "set_duty");
+        // check duty range(1-100) and compatibility with saved period.
+        if (((new_value > 0) && (new_value <= 100)) && (setBiaParameters(new_value, g_speriod))){
           g_sduty = new_value;
           g_client.print(g_sduty);
           error_code = 0; // cmdOk
@@ -767,16 +765,12 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
         else {
           error_code = -4; // out of range
         }
-
       }
 
       if (checkCommand(input_command, "set_period")) {
-        int mylen = input_command.length();
-        String inter = input_command.substring(10, mylen);
-    
-        new_value = (unsigned int)inter.toInt();
-      
-        if (setBiaParameters(g_sduty, new_value)){
+        new_value = retrieveInputValue(input_command, "set_period");
+        // check period range(1-65535, per unsigned int) and compatibility with saved duty cycle.
+        if (((new_value > 0) && (new_value <= 65535)) && (setBiaParameters(g_sduty, new_value))){
           g_speriod = new_value;
           g_client.print(g_speriod);
           error_code = 0; // cmdOk
@@ -787,12 +781,8 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
       }
     
       if (checkCommand(input_command, "set_power")){
-        int mylen = input_command.length();
-        String inter = input_command.substring(9, mylen);
-    
-        new_value = (unsigned int)inter.toInt();
-      
-        if ((new_value > 0) && (new_value < 256)){
+        new_value = retrieveInputValue(input_command, "set_power");
+        if ((new_value > 0) && (new_value <= 255)){
           g_apower = new_value;
           switchBiaLED(bia_is_on);
           g_client.print(g_apower);
