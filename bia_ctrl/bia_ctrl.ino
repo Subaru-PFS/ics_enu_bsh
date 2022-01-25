@@ -841,7 +841,7 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
           error_code = 0; // cmdOk
         }
         else{
-          error_code = 60; // exposure not declared.
+          error_code = -7; // exposure not declared.
         }
       }
 
