@@ -93,13 +93,6 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
     int buffer_size;
     char command_str[100];
     const char EOL[] = "\r\n";
-
-    //Error
-    const char ERROR_SHUTTER_TIMEOUT[] = "shutter switch timeout.";
-    const char ERROR_EXP_ALREADY_DECLARED[] = "exposure already declared.";
-    const char ERROR_EXP_SHUTTER_NOT_OPEN[] = "shutter not yet open.";
-    const char ERROR_EXP_SHUTTER_NOT_CLOSED[] = "shutter not yet close.";
-    const char ERROR_EXP_NOT_DECLARED[] = "no exposure declared.";
         
     // BIA Variables
     int bia_mode;
@@ -314,10 +307,9 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
       return i;
     }
     
-    bool statusEvolve(int command, EthernetClient g_client){
+    int statusEvolve(int command){
       // state machine command, will be rejected if forbidden or irrelevant.
-      bool cmdOk = false;
-
+      int error_code = -3; // set transition error by default.
       switch (bia_mode)
       {
         ////////////// BIA OFF, BLUE shutter CLOSED, RED shutter CLOSED ///////////////
@@ -327,7 +319,7 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
             {
               case 0://bia_on, OK
                 bia_mode = 10;
-                cmdOk = true;
+                error_code = 0; // cmdOk
                 break;
     
               case 1://bia_off while already off NOK
@@ -335,7 +327,7 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
     
               case 2://shut_open : open both shutters OK
                 bia_mode = 20;
-                cmdOk = true;
+                error_code = 0; // cmdOk
                 break;
     
               case 3://shut_close while they are already closed NOK
@@ -343,7 +335,7 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
     
               case 4://blue_open : open blue shutter only OK
                 bia_mode = 30;
-                cmdOk = true;
+                error_code = 0; // cmdOk
                 break;
     
               case 5://blue_close while blue shutter is already closed NOK
@@ -351,7 +343,7 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
     
               case 6://red_open : open red shutter only OK
                 bia_mode = 40;
-                cmdOk = true;
+                error_code = 0; // cmdOk
                 break;
     
               case 7://red_close : close red shutter while already closed NOK
@@ -359,10 +351,11 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
 
               case 8://init : close both shutters, bia_off OK
                 bia_mode = 0;
-                cmdOk = true;
+                error_code = 0; // cmdOk
                 break;
 
               case STATECMDS_COUNT://error / command not found NOK
+                error_code = -1; // not recognized command
                 break;
 
             }
@@ -378,7 +371,7 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
     
               case 1://bia_off
                 bia_mode = 0;
-                cmdOk = true;
+                error_code = 0; // cmdOk
                 break;
     
               case 2://shut_open, INTERLOCK NOK
@@ -401,10 +394,11 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
     
               case 8://init : close both shutters, bia_off, OK
                 bia_mode = 0;
-                cmdOk = true;
+                error_code = 0; // cmdOk
                 break;
 
               case STATECMDS_COUNT://error / command not found NOK
+                error_code = -1; // not recognized command
                 break;
             }
             break;
@@ -425,7 +419,7 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
     
               case 3://shut_close : close both shutters OK
                 bia_mode = 0;
-                cmdOk = true;
+                error_code = 0; // cmdOk
                 break;
     
               case 4://blue_open while shutter blue is already open, NOK
@@ -433,7 +427,7 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
     
               case 5://blue_close : close blue shutter only OK
                 bia_mode = 40;
-                cmdOk = true;
+                error_code = 0; // cmdOk
                 break;
     
               case 6://red_open while shutter red is already open, NOK
@@ -441,15 +435,16 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
     
               case 7://red_close : close red shutter only OK
                 bia_mode = 30;
-                cmdOk = true;
+                error_code = 0; // cmdOk
                 break;
     
               case 8://init : close both shutters, bia_off, OK
                 bia_mode = 0;
-                cmdOk = true;
+                error_code = 0; // cmdOk
                 break;
 
               case STATECMDS_COUNT://error / command not found NOK
+                error_code = -1; // not recognized command
                 break;
             }
             break;
@@ -467,12 +462,12 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
     
               case 2://shut_open : open both shutters OK
                 bia_mode = 20;
-                cmdOk = true;
+                error_code = 0; // cmdOk
                 break;
     
               case 3://shut_close : close both shutters OK
                 bia_mode = 0;
-                cmdOk = true;
+                error_code = 0; // cmdOk
                 break;
     
               case 4://blue_open while blue shutter is already open NOK
@@ -480,12 +475,12 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
     
               case 5://blue_close : close blue shutter only OK
                 bia_mode = 0;
-                cmdOk = true;
+                error_code = 0; // cmdOk
                 break;
     
               case 6://red_open : open red shutter only OK
                 bia_mode = 20;
-                cmdOk = true;
+                error_code = 0; // cmdOk
                 break;
     
               case 7://red_close while red shutter already closed NOK
@@ -493,10 +488,11 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
     
               case 8://init, close both shutters, bia_off OK
                 bia_mode = 0;
-                cmdOk = true;
+                error_code = 0; // cmdOk
                 break;
 
               case STATECMDS_COUNT://error / command not found NOK
+                error_code = -1; // not recognized command
                 break;
             }
             break;
@@ -514,17 +510,17 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
     
               case 2://shut_open : open both shutters OK
                 bia_mode = 20;
-                cmdOk = true;
+                error_code = 0; // cmdOk
                 break;
     
               case 3://shut_close : close both shutters OK
                 bia_mode = 0;
-                cmdOk = true;
+                error_code = 0; // cmdOk
                 break;
     
               case 4://blue_open : open blue shutter only OK
                 bia_mode = 20;
-                cmdOk = true;
+                error_code = 0; // cmdOk
                 break;
     
               case 5://blue_close while blue shutter is already closed NOK
@@ -535,22 +531,24 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
     
               case 7://red_close : close red shutter only OK
                 bia_mode = 0;
-                cmdOk = true;
+                error_code = 0; // cmdOk
                 break;
     
               case 8://init : close both shutters, bia_off OK
                 bia_mode = 0;
-                cmdOk = true;
+                error_code = 0; // cmdOk
                 break;
 
               case STATECMDS_COUNT://error / command not found NOK
+                error_code = -1; // not recognized command
                 break;
             }
             break;
           }
       }
-      if (!cmdOk){
-        return cmdOk;
+
+      if (error_code != 0){ //cmd not OK, not need to go further.
+        return error_code;
       }
 
       //Actions upon state
@@ -565,8 +563,7 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
           digitalWrite(SHB_PIN, SHUTTER_LOW); //CLOSED
 
           if (!waitForCompletion(STATUS_BCRC)){
-            g_client.write(ERROR_SHUTTER_TIMEOUT);
-            cmdOk=false;
+            error_code = -2; // shutter timeout error.
           }
           break;
     
@@ -578,8 +575,7 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
           digitalWrite(SHB_PIN, SHUTTER_LOW); //CLOSED
           
           if (!waitForCompletion(STATUS_BCRC)){
-            g_client.write(ERROR_SHUTTER_TIMEOUT);
-            cmdOk=false;
+            error_code = -2; // shutter timeout error.
           }
           break;
 
@@ -592,8 +588,7 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
           digitalWrite(SHB_PIN, SHUTTER_HIGH); //OPEN
 
           if (!waitForCompletion(STATUS_BORO)){
-            g_client.write(ERROR_SHUTTER_TIMEOUT);
-            cmdOk=false;
+            error_code = -2; // shutter timeout error.
           }
           break;
 
@@ -606,8 +601,7 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
           digitalWrite(SHR_PIN, SHUTTER_LOW);  //CLOSED
 
           if (!waitForCompletion(STATUS_BORC)){
-            g_client.write(ERROR_SHUTTER_TIMEOUT);
-            cmdOk=false;
+            error_code = -2; // shutter timeout error.
           }
           break;
 
@@ -620,12 +614,11 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
           digitalWrite(SHR_PIN, SHUTTER_HIGH); //OPEN
 
           if (!waitForCompletion(STATUS_BCRO)){
-            g_client.write(ERROR_SHUTTER_TIMEOUT);
-            cmdOk=false;
+            error_code = -2; // shutter timeout error.
           }
           break;
       }
-      return cmdOk;
+      return error_code;
     }
 
     bool checkCommand(String input_command, String known_command){
@@ -689,33 +682,33 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
 
       // check state machine command.
       int cmd = getCommandCode(input_command);
-      bool cmdOk = statusEvolve(cmd, g_client);
+      int error_code = statusEvolve(cmd);
           
       /// STATUS, PARAMETERS COMMAND. ///
       
       if (checkCommand(input_command, "statword")){
         g_client.print(status_word);
-        cmdOk = true;
+        error_code = 0; // cmdOk
       }
     
       if (checkCommand(input_command, "status")){
         g_client.print(bia_mode);
-        cmdOk = true;
+        error_code = 0; // cmdOk
       }
 
       if (checkCommand(input_command, "get_duty")){
         g_client.print(g_aduty);
-        cmdOk = true;
+        error_code = 0; // cmdOk
       }
     
       if (checkCommand(input_command, "get_period")){
         g_client.print(g_aperiod);
-        cmdOk = true;
+        error_code = 0; // cmdOk
       }
     
       if (checkCommand(input_command, "get_power")){
         g_client.print(g_apower);
-        cmdOk = true;
+        error_code = 0; // cmdOk
       }
 
       if (checkCommand(input_command, "get_param")){
@@ -724,12 +717,12 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
         g_client.print(g_aperiod);
         g_client.print(',');
         g_client.print(g_apower);
-        cmdOk = true;
+        error_code = 0; // cmdOk
       }
 
       if (checkCommand(input_command, "get_version")){
         g_client.print(FIRMWARE_VERSION);
-        cmdOk = true;
+        error_code = 0; // cmdOk
       }
        
       if (checkCommand(input_command, "read_phr")){
@@ -741,19 +734,19 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
         g_client.print(',');
         g_client.print(phr1);
 
-        cmdOk = true;
+        error_code = 0; // cmdOk
       }
       
       /// (DE)ACTIVATE BIA STROBING MODE ///
     
       if (checkCommand(input_command, "pulse_on")){
         setBiaParameters(g_sduty, g_speriod);
-        cmdOk = true;
+        error_code = 0; // cmdOk
       }
     
       if (checkCommand(input_command, "pulse_off")){
         setBiaParameters(NO_STROBE_DUTY, NO_STROBE_PERIOD);
-        cmdOk = true;
+        error_code = 0; // cmdOk
       }
 
       /// SET NEW BIA PARAMETERS ///
@@ -769,8 +762,12 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
         if (setBiaParameters(new_value, g_speriod)){
           g_sduty = new_value;
           g_client.print(g_sduty);
-          cmdOk = true;
+          error_code = 0; // cmdOk
         }
+        else {
+          error_code = -4; // out of range
+        }
+
       }
 
       if (checkCommand(input_command, "set_period")) {
@@ -782,7 +779,10 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
         if (setBiaParameters(g_sduty, new_value)){
           g_speriod = new_value;
           g_client.print(g_speriod);
-          cmdOk = true;
+          error_code = 0; // cmdOk
+        }
+        else {
+          error_code = -4; // out of range
         }
       }
     
@@ -796,7 +796,10 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
           g_apower = new_value;
           switchBiaLED(bia_is_on);
           g_client.print(g_apower);
-          cmdOk = true;
+          error_code = 0; // cmdOk
+        }
+        else {
+          error_code = -4; // out of range
         }
       }
 
@@ -806,10 +809,10 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
         if (!do_exposure){
           resetExposureParam();
           do_exposure = true;
-          cmdOk = true;
+          error_code = 0; // cmdOk
         }
         else{
-          g_client.write(ERROR_EXP_ALREADY_DECLARED);
+          error_code = -5; // exposure already declared.
         }
       }
 
@@ -817,10 +820,10 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
         // check that close cmd has logically followed open cmd
         if (do_exposure){
           if (open_started_at==0){
-            g_client.write(ERROR_EXP_SHUTTER_NOT_OPEN);
+            error_code = -6; // exposure not completed yet.
           }
           else if (close_started_at==0){
-            g_client.write(ERROR_EXP_SHUTTER_NOT_CLOSED);
+            error_code = -6; // exposure not completed yet.
           }
           else{
             unsigned long transient_time_opening = fully_open_at - open_started_at;
@@ -834,26 +837,51 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
             g_client.print(transient_time_closing);
 
             resetExposureParam();
-            cmdOk = true;
+            error_code = 0; // cmdOk
           }
         }
         else{
-          g_client.write(ERROR_EXP_NOT_DECLARED);
+          error_code = -7; // exposure not declared.
         }
       }
 
       if (checkCommand(input_command, "cancel_exp")){
         if (do_exposure){
           resetExposureParam();
-          cmdOk = true;
+          error_code = 0; // cmdOk
         }
         else{
-          g_client.write(ERROR_EXP_NOT_DECLARED);
+          error_code = 60; // exposure not declared.
         }
       }
 
       //////////////////////////////////////////// AFFICHAGE COMMANDE NOK /////////////////////////////////////////////
-      if (!cmdOk){
+
+      if (error_code != 0){ //cmd not OK
+        switch (error_code){
+          case -1:
+            g_client.write("unrecognized command:");
+            g_client.write(command_str);
+            break;
+          case -2:
+            g_client.write("shutter switch timeout.");
+            break;
+          case -3:
+            g_client.write("transition not allowed.");
+            break;
+          case -4:
+            g_client.write("value out of range.");
+            break;
+          case -5:
+            g_client.write("exposure already declared.");
+            break;
+          case -6:
+            g_client.write("exposure not yet completed.");
+            break;
+          case -7:
+            g_client.write("no exposure declared.");
+            break;
+          }
         g_client.write("nok\r\n");
       }
       else{
