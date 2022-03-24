@@ -18,7 +18,7 @@ dhcp-host=a8:61:0a:ae:13:25,bsh-enu6
 *  
  */
     //Define firware version from git-tagged-version
-    const char FIRMWARE_VERSION[] = "0.1.4";
+    const char FIRMWARE_VERSION[] = "0.1.5";
 
     //Uncomment the line below depending on the BSH
     #define ENU1
